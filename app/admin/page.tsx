@@ -1,279 +1,461 @@
 'use client';
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { ArrowLeft, ShieldAlert, PlusCircle, Package, Trash2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Shield, ArrowLeft, Trash2, Plus, Edit3, RefreshCw, X, Check } from 'lucide-react';
+
+interface Product {
+  id?: string;
+  Id?: string;
+  name?: string;
+  Name?: string;
+  price?: number | string;
+  Price?: number | string;
+  category?: string;
+  Category?: string;
+  stock?: number | string;
+  Stock?: number | string;
+  image1?: string;
+  Image?: string;
+  description?: string;
+  Description?: string;
+}
 
 export default function AdminPage() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const router = useRouter();
   const [passcode, setPasscode] = useState('');
-  
-  const [adminProducts, setAdminProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
-  // Form states supporting 5 images & original price
+  const categoriesList = ['Necklace Sets', 'Mangalsutra', 'Bangles', 'Chains', 'Rings', 'Earrings'];
+
+  // Add Product form states (1 Image)
   const [newName, setNewName] = useState('');
   const [newPrice, setNewPrice] = useState('');
-  const [newOriginalPrice, setNewOriginalPrice] = useState('');
-  const [newCategory, setNewCategory] = useState('Haram');
-  const [newImage1, setNewImage1] = useState('');
-  const [newImage2, setNewImage2] = useState('');
-  const [newImage3, setNewImage3] = useState('');
-  const [newImage4, setNewImage4] = useState('');
-  const [newImage5, setNewImage5] = useState('');
-  const [newDescription, setNewDescription] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const [newCategory, setNewCategory] = useState('Necklace Sets');
+  const [newStock, setNewStock] = useState('15');
+  const [img1, setImg1] = useState('');
+  const [newDesc, setNewDesc] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const fetchInventory = async () => {
+  // Edit Product Modal states (1 Image)
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editPrice, setEditPrice] = useState('');
+  const [editCategory, setEditCategory] = useState('Necklace Sets');
+  const [editStock, setEditStock] = useState('15');
+  const [editImg1, setEditImg1] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passcode === '1234') {
+      setIsAuthenticated(true);
+      fetchAdminData();
+    } else {
+      setErrorMsg('Incorrect passcode. Hint: 1234');
+    }
+  };
+
+  const fetchAdminData = async () => {
+    setLoading(true);
     try {
-      const sheetApiUrl = process.env.NEXT_PUBLIC_SHEET_URL;
-      if (!sheetApiUrl) return;
-      const res = await fetch(sheetApiUrl);
-      const data = await res.json();
-      setAdminProducts(data);
-    } catch (error) {
-      console.error('Error fetching inventory:', error);
+      const sheetUrl = process.env.NEXT_PUBLIC_SHEET_URL || '';
+      if (sheetUrl) {
+        const res = await fetch(sheetUrl);
+        const data = await res.json();
+        if (Array.isArray(data)) setProducts(data);
+      }
+
+      const ordersUrl = process.env.NEXT_PUBLIC_ORDERS_SHEET_URL || '';
+      if (ordersUrl) {
+        const resOrders = await fetch(ordersUrl);
+        const dataOrders = await resOrders.json();
+        if (Array.isArray(dataOrders)) setOrders(dataOrders);
+      }
+    } catch (err) {
+      console.error("Error fetching admin data:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchInventory();
-    }
-  }, [isAuthenticated]);
-
-  const handleLogin = (e) => {
+  const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (passcode === '1234') {
-      setIsAuthenticated(true);
-    } else {
-      alert('Incorrect passcode! Try "1234"');
+    if (!newName || !newPrice) {
+      setErrorMsg('Please fill in product name and price.');
+      return;
     }
-  };
 
-  const handleAddProduct = async (e) => {
-    e.preventDefault();
-    if (!newName || !newPrice) return;
+    setIsSubmitting(true);
+    setErrorMsg('');
+    setSuccessMsg('');
 
-    setSubmitting(true);
-    const newItem = {
-      id: Date.now().toString(),
+    const newProduct = {
+      id: 'SBJ-' + Date.now().toString().slice(-4),
       name: newName,
       price: Number(newPrice),
-      originalPrice: newOriginalPrice ? Number(newOriginalPrice) : '',
       category: newCategory,
-      image1: newImage1,
-      image2: newImage2,
-      image3: newImage3,
-      image4: newImage4,
-      image5: newImage5,
-      description: newDescription || 'Handcrafted gold-coated luxury jewelry piece.'
+      stock: Number(newStock) || 15,
+      image1: img1 || 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?q=80&w=600&auto=format&fit=crop',
+      description: newDesc || 'Exquisite 1g gold-plated jewelry piece.'
     };
 
     try {
-      const sheetApiUrl = process.env.NEXT_PUBLIC_SHEET_URL;
-      const response = await fetch(sheetApiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newItem),
-      });
-
-      if (response.ok) {
-        alert('Product successfully added to your Google Sheet with all images!');
-        setNewName('');
-        setNewPrice('');
-        setNewOriginalPrice('');
-        setNewImage1('');
-        setNewImage2('');
-        setNewImage3('');
-        setNewImage4('');
-        setNewImage5('');
-        setNewDescription('');
-        fetchInventory();
-      } else {
-        alert('Failed to save product to Google Sheet.');
+      const sheetUrl = process.env.NEXT_PUBLIC_SHEET_URL || '';
+      if (sheetUrl) {
+        await fetch(sheetUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newProduct)
+        });
       }
-    } catch (error) {
-      console.error('Error posting to sheet:', error);
-      alert('An error occurred while connecting to the sheet.');
+
+      setProducts([newProduct, ...products]);
+      setSuccessMsg('Product added successfully!');
+      setNewName('');
+      setNewPrice('');
+      setImg1('');
+      setNewDesc('');
+      fetchAdminData();
+    } catch (err) {
+      setErrorMsg('Failed to add product.');
     } finally {
-      setSubmitting(false);
+      setIsSubmitting(false);
     }
   };
 
-  const handleDelete = async (item) => {
-    const itemName = item.name || item.Name;
-    const confirmDelete = confirm(`Are you sure you want to delete "${itemName}"?`);
-    if (!confirmDelete) return;
+  const startEditProduct = (p: Product) => {
+    setEditingProduct(p);
+    setEditName(p.name || p.Name || '');
+    setEditPrice(String(p.price || p.Price || ''));
+    setEditCategory(p.category || p.Category || 'Necklace Sets');
+    setEditStock(String(p.stock || p.Stock || '15'));
+    setEditImg1(p.image1 || p.Image || '');
+    setEditDesc(p.description || p.Description || '');
+  };
+
+  const handleUpdateProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProduct) return;
+
+    const pId = editingProduct.id || editingProduct.Id;
+    const updatedData = {
+      name: editName,
+      price: Number(editPrice),
+      category: editCategory,
+      stock: Number(editStock),
+      image1: editImg1,
+      description: editDesc
+    };
 
     try {
-      const sheetApiUrl = process.env.NEXT_PUBLIC_SHEET_URL;
-      const targetId = item.id || item.Id;
-      
-      const response = await fetch(`${sheetApiUrl}/id/${targetId}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        alert('Product deleted successfully!');
-        fetchInventory();
-      } else {
-        alert('Failed to delete from Google Sheet.');
+      const sheetUrl = process.env.NEXT_PUBLIC_SHEET_URL || '';
+      if (sheetUrl) {
+        await fetch(`${sheetUrl}/id/${pId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedData)
+        });
       }
-    } catch (error) {
-      console.error('Error deleting product:', error);
-      alert('An error occurred during deletion.');
+
+      setProducts(products.map(p => String(p.id || p.Id) === String(pId) ? { ...p, ...updatedData } : p));
+      setSuccessMsg('Product updated successfully!');
+      setEditingProduct(null);
+      fetchAdminData();
+    } catch (err) {
+      setErrorMsg('Failed to update product.');
     }
   };
 
-  return (
-    <main className="min-h-screen bg-amber-50/30 text-gray-800 pb-16">
-      <header className="bg-amber-950 text-amber-100 py-4 px-6 md:px-12 shadow-lg sticky top-0 z-50 flex justify-between items-center border-b border-amber-900">
-        <Link href="/" className="inline-flex items-center gap-2 text-amber-200 hover:text-white text-xs transition">
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Store</span>
-        </Link>
-        <h1 className="text-lg font-bold text-amber-200">SB COLLECTIONS | Admin Dashboard</h1>
-      </header>
+  const handleDeleteProduct = async (productId: string) => {
+    if (!confirm('Are you sure you want to delete this product?')) return;
 
-      <div className="max-w-4xl mx-auto px-6 pt-12">
-        {!isAuthenticated ? (
-          <div className="bg-white rounded-2xl p-8 shadow-sm border border-amber-100 max-w-md mx-auto text-center">
-            <div className="inline-flex bg-amber-100 text-amber-900 p-3 rounded-full mb-4">
-              <ShieldAlert className="w-6 h-6" />
-            </div>
-            <h2 className="text-xl font-bold text-amber-950 mb-2">Restricted Access</h2>
-            <p className="text-gray-500 text-xs mb-6">Please enter your admin passcode to manage inventory.</p>
-            
-            <form onSubmit={handleLogin} className="space-y-4">
-              <input 
-                type="password"
-                required
-                value={passcode}
-                onChange={(e) => setPasscode(e.target.value)}
-                placeholder="Enter passcode (Hint: 1234)"
-                className="w-full text-xs p-3 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-900 text-center tracking-widest"
-              />
-              <button 
-                type="submit"
-                className="w-full bg-amber-950 hover:bg-amber-900 text-amber-100 font-medium py-3 rounded-xl text-xs transition shadow-sm"
-              >
-                Login to Dashboard
-              </button>
-            </form>
+    try {
+      const sheetUrl = process.env.NEXT_PUBLIC_SHEET_URL || '';
+      if (sheetUrl) {
+        await fetch(`${sheetUrl}/id/${productId}`, {
+          method: 'DELETE'
+        });
+      }
+
+      setProducts(products.filter(p => String(p.id || p.Id) !== String(productId)));
+      setSuccessMsg('Product deleted successfully.');
+    } catch (err) {
+      setErrorMsg('Failed to delete product.');
+    }
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center p-4">
+        <div className="bg-white p-8 rounded-3xl shadow-sm border border-amber-100 max-w-sm w-full space-y-4">
+          <div className="w-12 h-12 bg-amber-100 text-amber-900 rounded-2xl flex items-center justify-center mx-auto">
+            <Shield className="w-6 h-6" />
           </div>
-        ) : (
-          <div className="space-y-8">
-            {/* Add Product Form */}
-            <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-amber-100">
-              <h3 className="font-bold text-amber-950 text-base mb-4 flex items-center gap-2">
-                <PlusCircle className="w-5 h-5 text-amber-900" />
-                <span>Add New Item (Up to 5 Gallery Images)</span>
-              </h3>
+          <h2 className="text-lg font-extrabold text-center text-amber-950">Admin Portal</h2>
+          <form onSubmit={handleLogin} className="space-y-3">
+            <input 
+              type="password"
+              required
+              value={passcode}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPasscode(e.target.value)}
+              placeholder="Enter passcode (Hint: 1234)"
+              className="w-full text-xs p-3 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-900 text-center font-bold"
+            />
+            {errorMsg && <p className="text-[11px] text-red-600 font-semibold text-center">{errorMsg}</p>}
+            <button
+              type="submit"
+              className="w-full bg-amber-900 hover:bg-amber-950 text-white font-bold py-3 rounded-xl text-xs transition cursor-pointer shadow"
+            >
+              Login to Dashboard
+            </button>
+          </form>
+          <button onClick={() => router.push('/')} className="w-full text-center text-xs text-amber-900 font-semibold pt-2 cursor-pointer">
+            Back to Store
+          </button>
+        </div>
+      </div>
+    );
+  }
 
-              <form onSubmit={handleAddProduct} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <input 
-                  type="text" required value={newName} onChange={(e) => setNewName(e.target.value)}
-                  placeholder="Item Name" className="text-xs p-3 rounded-xl border border-gray-300 focus:border-amber-900 focus:outline-none"
-                />
-                <input 
-                  type="number" required value={newPrice} onChange={(e) => setNewPrice(e.target.value)}
-                  placeholder="Selling Price (₹)" className="text-xs p-3 rounded-xl border border-gray-300 focus:border-amber-900 focus:outline-none"
-                />
-                <input 
-                  type="number" value={newOriginalPrice} onChange={(e) => setNewOriginalPrice(e.target.value)}
-                  placeholder="Original Price for Discount (₹ e.g. 2499)" className="text-xs p-3 rounded-xl border border-gray-300 focus:border-amber-900 focus:outline-none"
-                />
-                <select 
-                  value={newCategory} onChange={(e) => setNewCategory(e.target.value)}
-                  className="text-xs p-3 rounded-xl border border-gray-300 focus:border-amber-900 focus:outline-none bg-white"
-                >
-                  <option value="Haram">Haram</option>
-                  <option value="Chokers">Chokers</option>
-                  <option value="Bangles">Bangles</option>
-                  <option value="Vaddanam">Vaddanam</option>
-                  <option value="Rings">Rings</option>
-                  <option value="Earrings">Earrings</option>
-                </select>
+  return (
+    <div className="min-h-screen bg-[#FDFBF7] text-gray-800 p-4 md:p-8 relative" suppressHydrationWarning>
+      <div className="max-w-6xl mx-auto space-y-8">
+        
+        <header className="flex justify-between items-center bg-white p-4 md:p-6 rounded-3xl shadow-sm border border-amber-100">
+          <button onClick={() => router.push('/')} className="inline-flex items-center gap-2 text-xs font-bold text-amber-900 cursor-pointer">
+            <ArrowLeft className="w-4 h-4" /><span>Back to Store</span>
+          </button>
+          <h1 className="text-sm md:text-base font-extrabold text-amber-950">SB Jewels Admin Dashboard</h1>
+          <button onClick={fetchAdminData} className="flex items-center gap-1 bg-amber-50 text-amber-900 px-3.5 py-2 rounded-xl text-xs font-bold border border-amber-200 cursor-pointer">
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /><span>Refresh</span>
+          </button>
+        </header>
 
-                <div className="sm:col-span-2 border-t border-gray-100 pt-4 mt-2">
-                  <p className="text-xs font-semibold text-gray-700 mb-2">Product Images (Paste Image URLs)</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    <input type="url" value={newImage1} onChange={(e) => setNewImage1(e.target.value)} placeholder="Main Display Image URL (Image 1)" className="text-xs p-2.5 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-900" />
-                    <input type="url" value={newImage2} onChange={(e) => setNewImage2(e.target.value)} placeholder="Gallery Image 2 URL" className="text-xs p-2.5 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-900" />
-                    <input type="url" value={newImage3} onChange={(e) => setNewImage3(e.target.value)} placeholder="Gallery Image 3 URL" className="text-xs p-2.5 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-900" />
-                    <input type="url" value={newImage4} onChange={(e) => setNewImage4(e.target.value)} placeholder="Gallery Image 4 URL" className="text-xs p-2.5 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-900" />
-                    <input type="url" value={newImage5} onChange={(e) => setNewImage5(e.target.value)} placeholder="Gallery Image 5 URL" className="text-xs p-2.5 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-900 sm:col-span-2" />
-                  </div>
-                </div>
-
-                <textarea 
-                  value={newDescription} onChange={(e) => setNewDescription(e.target.value)}
-                  placeholder="Product Description (e.g. Traditional 22K gold plated design...)" className="sm:col-span-2 text-xs p-3 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-900 h-24 mt-2"
-                />
-
-                <button 
-                  type="submit" disabled={submitting}
-                  className="sm:col-span-2 bg-amber-950 hover:bg-amber-900 text-amber-100 font-semibold py-3.5 rounded-xl text-xs transition shadow-md mt-2 disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  <PlusCircle className="w-4 h-4" />
-                  <span>{submitting ? 'Publishing to Google Sheet...' : 'Publish Product to Google Sheet'}</span>
-                </button>
-              </form>
-            </div>
-
-            {/* Existing Inventory List */}
-            <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-amber-100">
-              <h3 className="font-bold text-amber-950 text-base mb-4 flex items-center gap-2">
-                <Package className="w-5 h-5 text-amber-900" />
-                <span>Live Google Sheet Inventory ({adminProducts.length})</span>
-              </h3>
-
-              {loading ? (
-                <div className="text-center py-8 text-xs text-gray-500">Loading live sheet data...</div>
-              ) : adminProducts.length === 0 ? (
-                <div className="text-center py-8 text-xs text-gray-500">No products found in your sheet yet.</div>
-              ) : (
-                <div className="space-y-3">
-                  {adminProducts.map((item, index) => {
-                    const itemId = item.id || item.Id || index;
-                    const itemName = item.name || item.Name || 'Unnamed Item';
-                    const itemPrice = item.price || item.Price || 0;
-                    const itemCat = item.category || item.Category || 'General';
-                    const itemImg = item.image1 || item.image || item.Image || '';
-
-                    return (
-                      <div key={itemId} className="flex justify-between items-center p-3.5 rounded-2xl border border-amber-100 bg-amber-50/20">
-                        <div className="flex items-center gap-3">
-                          {itemImg ? (
-                            <img src={itemImg} alt="" className="w-12 h-12 object-cover rounded-xl border border-amber-200" />
-                          ) : (
-                            <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center text-[10px] text-amber-900">No Img</div>
-                          )}
-                          <div>
-                            <h4 className="font-bold text-gray-900 text-xs">{itemName}</h4>
-                            <p className="text-amber-900 font-extrabold text-xs mt-0.5">₹{Number(itemPrice).toLocaleString()} • <span className="text-gray-500 font-normal">{itemCat}</span></p>
-                          </div>
-                        </div>
-
-                        <button 
-                          onClick={() => handleDelete(item)}
-                          className="bg-red-50 hover:bg-red-100 text-red-600 px-3 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span>Delete</span>
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
+        {successMsg && (
+          <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-3 rounded-2xl text-xs font-bold text-center">
+            {successMsg}
           </div>
         )}
+
+        {/* ADD PRODUCT SECTION (1 IMAGE INPUT) */}
+        <div className="bg-white rounded-3xl shadow-sm border border-amber-100 p-6 md:p-8 space-y-4">
+          <h2 className="text-sm font-extrabold text-amber-950 pb-2 border-b border-gray-100 flex items-center gap-2">
+            <Plus className="w-4 h-4" /><span>Add New Jewelry Product</span>
+          </h2>
+          
+          <form onSubmit={handleAddProduct} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Product Name</label>
+              <input 
+                type="text" 
+                required
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="e.g. Royal Gold Necklace Set"
+                className="w-full text-xs p-3 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-900"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Price (₹)</label>
+              <input 
+                type="number" 
+                required
+                value={newPrice}
+                onChange={(e) => setNewPrice(e.target.value)}
+                placeholder="1499"
+                className="w-full text-xs p-3 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-900"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Category</label>
+              <select 
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value)}
+                className="w-full text-xs p-3 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-900 bg-white"
+              >
+                {categoriesList.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Stock Quantity</label>
+              <input 
+                type="number" 
+                value={newStock}
+                onChange={(e) => setNewStock(e.target.value)}
+                className="w-full text-xs p-3 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-900"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-xs font-bold text-gray-700 mb-1">Image URL</label>
+              <input 
+                type="url" 
+                value={img1} 
+                onChange={(e) => setImg1(e.target.value)} 
+                placeholder="https://images.unsplash.com/..." 
+                className="w-full text-xs p-3 rounded-xl border border-gray-300" 
+              />
+            </div>
+
+            <div className="md:col-span-3">
+              <label className="block text-xs font-bold text-gray-700 mb-1">Description</label>
+              <textarea 
+                rows={2}
+                value={newDesc}
+                onChange={(e) => setNewDesc(e.target.value)}
+                placeholder="Enter item description..."
+                className="w-full text-xs p-3 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-900"
+              />
+            </div>
+
+            <div className="md:col-span-3 pt-2">
+              <button 
+                type="submit"
+                disabled={isSubmitting}
+                className="bg-amber-900 hover:bg-amber-950 text-white font-extrabold px-6 py-3 rounded-xl text-xs shadow transition cursor-pointer"
+              >
+                {isSubmitting ? 'Adding Product...' : 'Add Product to Inventory'}
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* CUSTOMER ORDERS */}
+        <div className="bg-white rounded-3xl shadow-sm border border-amber-100 p-6 md:p-8 space-y-4">
+          <h2 className="text-sm font-extrabold text-amber-950 pb-2 border-b border-gray-100">Customer Orders ({orders.length})</h2>
+          {orders.length === 0 ? (
+            <p className="text-xs text-gray-500 py-4 text-center">No orders recorded yet.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="bg-amber-50 text-amber-950 border-b border-amber-100">
+                    <th className="p-3">Order ID</th>
+                    <th className="p-3">Customer</th>
+                    <th className="p-3">Phone</th>
+                    <th className="p-3">Items</th>
+                    <th className="p-3">Total</th>
+                    <th className="p-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {orders.map((ord: any, idx: number) => (
+                    <tr key={idx} className="hover:bg-amber-50/30">
+                      <td className="p-3 font-bold text-amber-900">{ord.OrderId}</td>
+                      <td className="p-3 font-semibold">{ord.CustomerName}</td>
+                      <td className="p-3">{ord.Phone}</td>
+                      <td className="p-3 max-w-xs truncate">{ord.Items}</td>
+                      <td className="p-3 font-extrabold">₹{Number(ord.TotalAmount).toLocaleString()}</td>
+                      <td className="p-3"><span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold text-[10px]">{ord.Status}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* INVENTORY MANAGEMENT */}
+        <div className="bg-white rounded-3xl shadow-sm border border-amber-100 p-6 md:p-8 space-y-4">
+          <h2 className="text-sm font-extrabold text-amber-950 pb-2 border-b border-gray-100">Manage Inventory ({products.length})</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {products.map((p: Product, idx: number) => {
+              const pId = p.id || p.Id || idx;
+              const pName = p.name || p.Name;
+              const pPrice = p.price || p.Price;
+              const pImage = p.image1 || p.Image;
+              const pCat = p.category || p.Category;
+
+              return (
+                <div key={pId} className="bg-amber-50/40 p-4 rounded-2xl border border-amber-200/60 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <img src={pImage} alt={pName} className="w-12 h-12 rounded-xl object-cover border flex-shrink-0" />
+                    <div className="min-w-0">
+                      <h4 className="font-bold text-xs truncate">{pName}</h4>
+                      <p className="text-[10px] text-amber-800 font-semibold">{pCat}</p>
+                      <p className="text-[11px] font-extrabold text-amber-950 mt-0.5">₹{Number(pPrice).toLocaleString()}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button onClick={() => startEditProduct(p)} className="text-amber-900 hover:text-amber-950 p-2 cursor-pointer" title="Edit">
+                      <Edit3 className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => handleDeleteProduct(String(pId))} className="text-red-500 hover:text-red-700 p-2 cursor-pointer" title="Delete">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
       </div>
-    </main>
+
+      {/* EDIT PRODUCT MODAL (1 IMAGE) */}
+      {editingProduct && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" suppressHydrationWarning>
+          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl p-6 space-y-4 border border-amber-100 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center border-b border-gray-100 pb-3">
+              <h3 className="text-base font-extrabold text-amber-950">Edit Product</h3>
+              <button onClick={() => setEditingProduct(null)} className="text-gray-400 hover:text-gray-700 p-1 cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateProduct} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Product Name</label>
+                <input type="text" required value={editName} onChange={(e) => setEditName(e.target.value)} className="w-full text-xs p-3 rounded-xl border border-gray-300" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Price (₹)</label>
+                  <input type="number" required value={editPrice} onChange={(e) => setEditPrice(e.target.value)} className="w-full text-xs p-3 rounded-xl border border-gray-300" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Category</label>
+                  <select value={editCategory} onChange={(e) => setEditCategory(e.target.value)} className="w-full text-xs p-3 rounded-xl border border-gray-300 bg-white">
+                    {categoriesList.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Stock Quantity</label>
+                <input type="number" value={editStock} onChange={(e) => setEditStock(e.target.value)} className="w-full text-xs p-3 rounded-xl border border-gray-300" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Image URL</label>
+                <input type="url" value={editImg1} onChange={(e) => setEditImg1(e.target.value)} className="w-full text-xs p-3 rounded-xl border border-gray-300" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Description</label>
+                <textarea rows={2} value={editDesc} onChange={(e) => setEditDesc(e.target.value)} className="w-full text-xs p-3 rounded-xl border border-gray-300" />
+              </div>
+
+              <div className="pt-2 flex gap-3">
+                <button type="submit" className="flex-1 bg-amber-900 hover:bg-amber-950 text-white font-extrabold py-3 rounded-xl text-xs shadow cursor-pointer">Save Changes</button>
+                <button type="button" onClick={() => setEditingProduct(null)} className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold px-5 py-3 rounded-xl text-xs cursor-pointer">Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+    </div>
   );
 }

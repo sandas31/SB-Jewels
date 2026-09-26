@@ -1,35 +1,54 @@
 'use client';
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ShoppingBag, Trash2, ArrowLeft, CheckCircle2, MapPin, ShieldCheck, Smartphone, QrCode } from 'lucide-react';
+import { ShoppingBag, ArrowLeft, Trash2, ShieldCheck, MapPin, Check, MessageCircle } from 'lucide-react';
 
 export default function CartPage() {
   const router = useRouter();
   const [cart, setCart] = useState<any[]>([]);
-  
-  // Strict Form States
+  const [loading, setLoading] = useState(true);
+
+  // Form fields
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [pincode, setPincode] = useState('');
-  const [apartment, setApartment] = useState('');
-  const [city, setCity] = useState('');
+  const [houseNo, setHouseNo] = useState('');
+  const [street, setStreet] = useState('');
+  const [city, setCity] = useState('Hyderabad');
   const [state, setState] = useState('Telangana');
-  
+  const [country, setCountry] = useState('India');
+  const [pincode, setPincode] = useState('');
+
+  // Inline validation error states
+  const [nameError, setNameError] = useState('');
+  const [phoneError, setPhoneError] = useState('');
+  const [houseError, setHouseError] = useState('');
+  const [streetError, setStreetError] = useState('');
+  const [cityError, setCityError] = useState('');
+  const [stateError, setStateError] = useState('');
+  const [countryError, setCountryError] = useState('');
+  const [pincodeError, setPincodeError] = useState('');
+
   const [orderPlaced, setOrderPlaced] = useState(false);
-  const [orderId, setOrderId] = useState('');
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [createdOrderId, setCreatedOrderId] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    const savedCart = JSON.parse(localStorage.getItem('sb_cart') || '[]');
-    setCart(Array.isArray(savedCart) ? savedCart : []);
+    try {
+      const savedCart = JSON.parse(localStorage.getItem('sb_cart') || '[]');
+      setCart(Array.isArray(savedCart) ? savedCart : []);
+    } catch (e) {
+      console.error("Cart loading error:", e);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const handleQuantityChange = (cartId: any, delta: number) => {
+  const updateQuantity = (cartId: any, delta: number) => {
     const updated = cart.map(item => {
       if (item.cartId === cartId) {
         const newQty = (Number(item.quantity) || 1) + delta;
-        if (newQty < 1) return item;
-        return { ...item, quantity: newQty };
+        return { ...item, quantity: newQty < 1 ? 1 : newQty };
       }
       return item;
     });
@@ -37,7 +56,7 @@ export default function CartPage() {
     localStorage.setItem('sb_cart', JSON.stringify(updated));
   };
 
-  const removeFromCart = (cartId: any) => {
+  const removeItem = (cartId: any) => {
     const updated = cart.filter(item => item.cartId !== cartId);
     setCart(updated);
     localStorage.setItem('sb_cart', JSON.stringify(updated));
@@ -47,412 +66,323 @@ export default function CartPage() {
     return cart.reduce((total: number, item: any) => total + (Number(item.price) * (Number(item.quantity) || 1)), 0);
   };
 
-  const handleNameChange = (e: any) => {
-    const val = e.target.value.replace(/[^a-zA-Z\s]/g, '').slice(0, 30);
-    setName(val);
-  };
-
-  const handlePhoneChange = (e: any) => {
-    const val = e.target.value.replace(/\D/g, '').slice(0, 10);
-    setPhone(val);
-  };
-
-  const handlePincodeChange = (e: any) => {
-    const val = e.target.value.replace(/\D/g, '').slice(0, 6);
-    setPincode(val);
-  };
-
-  const handleApartmentChange = (e: any) => {
-    const val = e.target.value.replace(/[<>]/g, '').slice(0, 40);
-    setApartment(val);
-  };
-
-  const handleCityChange = (e: any) => {
-    const val = e.target.value.replace(/[^a-zA-Z\s]/g, '').slice(0, 20);
-    setCity(val);
-  };
-
-  // Step 1: Validate Form and Open Payment Gateway Modal
-  const handleProceedClick = (e: any) => {
+  const handlePayment = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (name.trim().length < 2) {
-      alert('Security Validation: Please enter a valid name (letters only).');
-      return;
-    }
-    if (!/^\d{10}$/.test(phone)) {
-      alert('Security Validation: Phone number must be exactly 10 digits.');
-      return;
-    }
-    if (!/^\d{6}$/.test(pincode)) {
-      alert('Security Validation: Pincode must be exactly 6 digits.');
-      return;
-    }
-    if (apartment.trim().length < 5) {
-      alert('Security Validation: Please enter a valid street/house address.');
-      return;
-    }
-    if (city.trim().length < 3) {
-      alert('Security Validation: Please enter a valid city name.');
-      return;
-    }
-    if (cart.length === 0) {
-      alert('Your shopping bag is empty.');
-      return;
+    let isValid = true;
+
+    // Reset errors
+    setNameError('');
+    setPhoneError('');
+    setHouseError('');
+    setStreetError('');
+    setCityError('');
+    setStateError('');
+    setCountryError('');
+    setPincodeError('');
+
+    if (!name.trim() || !/^[a-zA-Z\s]+$/.test(name)) {
+      setNameError('Please enter a valid name (letters only).');
+      isValid = false;
     }
 
-    // All fields are valid! Open payment options modal.
-    setShowPaymentModal(true);
-  };
-
-  // Step 2: Trigger UPI App Intent or QR verification
-  const handleUpiAppPayment = (appType: string) => {
-    const amount = calculateTotal();
-    const payeeVpa = '7981658289@ybl';
-    const payeeName = 'SB%20Jewels';
-    const transactionNote = 'SB%20Jewels%20Order%20Payment';
-
-    let finalUri = `upi://pay?pa=${payeeVpa}&pn=${payeeName}&am=${amount}&cu=INR&tn=${transactionNote}`;
-    if (appType === 'phonepe') {
-      finalUri = `phonepe://pay?pa=${payeeVpa}&pn=${payeeName}&am=${amount}&cu=INR&tn=${transactionNote}`;
-    } else if (appType === 'gpay') {
-      finalUri = `tez://upi/pay?pa=${payeeVpa}&pn=${payeeName}&am=${amount}&cu=INR&tn=${transactionNote}`;
-    } else if (appType === 'paytm') {
-      finalUri = `paytmmp://pay?pa=${payeeVpa}&pn=${payeeName}&am=${amount}&cu=INR&tn=${transactionNote}`;
+    if (!phone.trim() || !/^\d{10}$/.test(phone)) {
+      setPhoneError('Phone number must be exactly 10 digits.');
+      isValid = false;
     }
 
-    window.location.href = finalUri;
+    if (!houseNo.trim()) {
+      setHouseError('Please enter House/Flat No.');
+      isValid = false;
+    }
 
-    // Simulate completion and finalize order after app return
-    setTimeout(() => {
-      setShowPaymentModal(false);
-      finalizeSuccessfulOrder();
-    }, 3000);
-  };
+    if (!street.trim()) {
+      setStreetError('Please enter Street or Locality.');
+      isValid = false;
+    }
 
-  const finalizeSuccessfulOrder = () => {
-    const generatedId = 'SB-' + Math.floor(100000 + Math.random() * 900000);
-    setOrderId(generatedId);
-    setOrderPlaced(true);
+    if (!city.trim()) {
+      setCityError('Please enter City.');
+      isValid = false;
+    }
 
-    const newOrder = {
-      orderId: generatedId,
-      date: new Date().toLocaleDateString(),
-      items: cart,
-      total: calculateTotal(),
-      customer: { name, phone, address: `${apartment}, ${city}, ${state}`, pincode },
-      payment: { method: 'Direct UPI App', upiId: '7981658289@ybl' }
+    if (!state.trim()) {
+      setStateError('Please enter State.');
+      isValid = false;
+    }
+
+    if (!country.trim()) {
+      setCountryError('Please enter Country.');
+      isValid = false;
+    }
+
+    if (!pincode.trim() || !/^\d{6}$/.test(pincode)) {
+      setPincodeError('Pincode must be exactly 6 digits.');
+      isValid = false;
+    }
+
+    if (!isValid) return;
+
+    setIsSubmitting(true);
+
+    const orderId = 'SBJ-' + Math.floor(100000 + Math.random() * 900000);
+    const dateStr = new Date().toLocaleString();
+    const itemsSummary = cart.map(i => `${i.name} (Qty: ${i.quantity}, Size: ${i.selectedSize || '18 in'})`).join(', ');
+    const totalAmount = calculateTotal();
+
+    const orderData = {
+      action: 'createOrder',
+      orderId,
+      date: dateStr,
+      customerName: name,
+      phone,
+      houseNo,
+      street,
+      city,
+      state,
+      country,
+      pincode,
+      items: itemsSummary,
+      totalAmount,
+      status: 'Confirmed'
     };
-    
-    const existingOrders = JSON.parse(localStorage.getItem('sb_orders') || '[]');
-    localStorage.setItem('sb_orders', JSON.stringify([newOrder, ...existingOrders]));
+
+    try {
+      const sheetUrl = process.env.NEXT_PUBLIC_ORDERS_SHEET_URL || 'https://script.google.com/macros/s/AKfycby69Zp3gn5KTLHDhfnEdl9ae5YLVKuU7MeD-UKo_H5qpl1mAq6fg6AEfxj3HpJbtAGVrw/exec';
+      await fetch(sheetUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(orderData)
+      });
+    } catch (err) {
+      console.error("Error saving to Google Sheet:", err);
+    }
+
+    // Save order locally for backup tracking
+    try {
+      const userOrders = JSON.parse(localStorage.getItem('sb_my_orders') || '[]');
+      userOrders.push(orderData);
+      localStorage.setItem('sb_my_orders', JSON.stringify(userOrders));
+    } catch (e) {}
+
+    setCreatedOrderId(orderId);
+    setOrderPlaced(true);
     localStorage.removeItem('sb_cart');
+    setCart([]);
+    setIsSubmitting(false);
 
-    const summaryText = 
-      `*New Order Confirmed & Paid!* (${generatedId})\n\n` +
-      `*Customer:* ${name}\n` +
-      `*Phone:* +91 ${phone}\n` +
-      `*Delivery Address:* ${apartment}, ${city}, ${state} - ${pincode}\n\n` +
-      `*Total Amount:* ₹${calculateTotal().toLocaleString()}\n\n` +
-      `Please process and dispatch my order!`;
-
-    setTimeout(() => {
-      window.open(`https://wa.me/917981658289?text=${encodeURIComponent(summaryText)}`, '_blank');
-    }, 1000);
+    // Trigger WhatsApp confirmation message
+    const waMessage = `Hello ${name}, thank you for your order with SB Jewels!\n\nOrder ID: ${orderId}\nTotal: ₹${totalAmount}\nStatus: Confirmed\n\nWe will dispatch your exquisite jewelry soon!`;
+    window.open(`https://wa.me/91${phone}?text=${encodeURIComponent(waMessage)}`, '_blank');
   };
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center bg-[#FDFBF7] text-amber-900 font-medium text-xs">Loading cart...</div>;
+  }
 
   return (
-    <div className="min-h-screen bg-[#FDFBF7] text-gray-900 flex flex-col">
-      <header className="bg-white py-4 px-6 md:px-12 shadow-sm border-b border-amber-100 flex justify-between items-center sticky top-0 z-50">
-        <div className="flex items-center gap-3 cursor-pointer" onClick={() => router.push('/')}>
-          <div className="w-10 h-10 rounded-full bg-amber-900 text-white flex items-center justify-center font-bold text-sm">SB</div>
-          <div>
-            <h1 className="text-sm font-extrabold tracking-wider text-amber-900">SB JEWELS</h1>
-            <p className="text-[8px] text-amber-700 uppercase font-semibold">Instant UPI Checkout</p>
-          </div>
+    <div className="min-h-screen flex flex-col bg-[#FDFBF7] text-gray-800">
+      
+      <header className="bg-white text-gray-900 py-3.5 px-4 md:px-12 shadow-sm z-50 border-b border-amber-100 sticky top-0">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <button onClick={() => router.push('/')} className="inline-flex items-center gap-2 text-xs font-bold text-amber-900 cursor-pointer">
+            <ArrowLeft className="w-4 h-4" /><span>Back to Shop</span>
+          </button>
+          <h1 className="text-base font-extrabold tracking-wider text-amber-900">SB JEWELS CHECKOUT</h1>
+          <div className="w-16"></div>
         </div>
-
-        <button 
-          onClick={() => router.push('/')}
-          className="flex items-center gap-1.5 text-xs font-bold text-amber-900 hover:text-amber-950 transition cursor-pointer"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Store</span>
-        </button>
       </header>
 
-      <main className="flex-1 max-w-7xl w-full mx-auto p-6 md:p-10">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 md:px-6 py-8">
         {orderPlaced ? (
-          <div className="bg-white rounded-3xl shadow-md border border-amber-100 p-8 md:p-12 text-center max-w-xl mx-auto space-y-6">
+          <div className="bg-white rounded-3xl shadow-sm border border-amber-100 p-8 md:p-12 text-center max-w-lg mx-auto space-y-4">
             <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
-              <CheckCircle2 className="w-10 h-10" />
+              <Check className="w-8 h-8" />
             </div>
-            <div>
-              <h2 className="text-2xl font-extrabold text-amber-950 mb-2">Order Paid & Confirmed!</h2>
-              <p className="text-xs text-gray-500">Thank you for shopping with SB Jewels. Your order reference is <strong className="text-gray-800">{orderId}</strong>.</p>
-            </div>
-            
-            <div className="bg-amber-50/50 p-4 rounded-2xl border border-amber-100 text-xs text-left space-y-2">
-              <p className="font-bold text-amber-950">Store Pickup / Delivery Address:</p>
-              <p className="text-gray-600">Road No 10, Banjara Hills, Hyderabad, Telangana - 500004</p>
-              <p className="text-[11px] text-emerald-700 font-semibold pt-1">✓ WhatsApp confirmation window has opened to notify our team instantly.</p>
-            </div>
-
-            <button
-              onClick={() => router.push('/')}
-              className="w-full bg-amber-900 hover:bg-amber-950 text-white font-bold py-3.5 rounded-xl text-xs transition shadow cursor-pointer"
-            >
+            <h2 className="text-xl font-extrabold text-amber-950">Order Placed Successfully!</h2>
+            <p className="text-xs text-gray-600 leading-relaxed">Your Order ID is <strong className="text-amber-900">{createdOrderId}</strong>. A confirmation message has been sent to your WhatsApp.</p>
+            <button onClick={() => router.push('/')} className="w-full bg-amber-900 hover:bg-amber-950 text-white font-bold py-3 rounded-xl text-xs shadow transition cursor-pointer">
               Continue Shopping
             </button>
           </div>
         ) : cart.length === 0 ? (
           <div className="bg-white rounded-3xl shadow-sm border border-amber-100 p-12 text-center max-w-md mx-auto space-y-4">
             <ShoppingBag className="w-12 h-12 text-amber-800 mx-auto opacity-50" />
-            <h3 className="text-lg font-bold text-gray-900">Your Shopping Bag is Empty</h3>
-            <p className="text-xs text-gray-500">Add exquisite 1g gold jewelry to your bag to proceed with secure checkout.</p>
-            <button
-              onClick={() => router.push('/')}
-              className="bg-amber-900 text-white px-6 py-3 rounded-xl text-xs font-bold shadow hover:bg-amber-950 transition cursor-pointer"
-            >
+            <h3 className="text-base font-bold text-gray-900">Your Cart is Empty</h3>
+            <p className="text-xs text-gray-500">Explore our luxury gold collections and add items to your cart.</p>
+            <button onClick={() => router.push('/')} className="bg-amber-900 text-white px-6 py-2.5 rounded-xl text-xs font-semibold shadow cursor-pointer">
               Explore Collections
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-8">
-              <div className="bg-white rounded-3xl shadow-sm border border-amber-100 p-6 md:p-8">
-                <h3 className="text-lg font-extrabold text-amber-950 mb-6 pb-3 border-b border-gray-100 flex justify-between items-center">
-                  <span>Your Shopping Bag Items</span>
-                  <span className="text-xs bg-amber-100 text-amber-900 px-3 py-1 rounded-full font-semibold">
-                    {cart.reduce((acc: number, item: any) => acc + (Number(item.quantity) || 1), 0)} items
-                  </span>
-                </h3>
-
-                <div className="space-y-4 max-h-[350px] overflow-y-auto pr-1">
-                  {cart.map((item: any) => (
-                    <div key={item.cartId} className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-amber-50/40 border border-amber-100">
-                      <div className="flex items-center gap-4">
-                        {item.image ? (
-                          <img src={item.image} alt={item.name} className="w-16 h-16 object-cover rounded-xl border border-amber-200 flex-shrink-0" />
-                        ) : (
-                          <div className="w-16 h-16 bg-amber-200 rounded-xl flex-shrink-0 flex items-center justify-center text-xs font-bold text-amber-900">Img</div>
-                        )}
-                        <div>
-                          <h4 className="font-bold text-gray-900 text-sm">{item.name}</h4>
-                          <p className="text-[11px] text-gray-500">Size: <strong className="text-gray-700">{item.selectedSize}</strong> | Qty: {item.quantity}</p>
-                          <p className="font-extrabold text-amber-950 text-sm mt-1">₹{Number(item.price).toLocaleString()}</p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-4">
-                        <div className="inline-flex items-center border border-gray-300 rounded-xl overflow-hidden bg-white shadow-sm">
-                          <button onClick={() => handleQuantityChange(item.cartId, -1)} className="px-3 py-1 text-gray-600 hover:bg-gray-100 font-bold text-xs cursor-pointer">-</button>
-                          <span className="px-3 py-1 text-xs font-bold text-gray-900">{item.quantity}</span>
-                          <button onClick={() => handleQuantityChange(item.cartId, 1)} className="px-3 py-1 text-gray-600 hover:bg-gray-100 font-bold text-xs cursor-pointer">+</button>
-                        </div>
-
-                        <button onClick={() => removeFromCart(item.cartId)} className="text-red-500 hover:text-red-700 p-2 cursor-pointer" title="Remove Item">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            <div className="bg-white rounded-3xl shadow-sm border border-amber-100 p-6 space-y-4 h-fit">
+              <h3 className="text-base font-extrabold text-amber-950 pb-3 border-b border-gray-100">Review Bag ({cart.length} items)</h3>
+              
+              <div className="space-y-4 max-h-96 overflow-y-auto pr-1">
+                {cart.map((item) => (
+                  <div key={item.cartId} className="flex items-center justify-between gap-4 p-3 bg-amber-50/40 rounded-2xl border border-amber-100/50">
+                    <div className="w-16 h-16 rounded-xl overflow-hidden bg-white flex-shrink-0 border border-amber-200 flex items-center justify-center">
+                      {item.image ? (
+                        <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-[10px] text-amber-900 font-bold">No Image</span>
+                      )}
                     </div>
-                  ))}
-                </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-bold text-xs text-gray-900 truncate">{item.name}</h4>
+                      <p className="text-[10px] text-gray-500 mt-0.5">Size: {item.selectedSize || '18 inches'}</p>
+                      <p className="font-extrabold text-amber-950 text-xs mt-1">₹{Number(item.price).toLocaleString()}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="inline-flex items-center border border-gray-300 rounded-lg overflow-hidden bg-white">
+                        <button onClick={() => updateQuantity(item.cartId, -1)} className="px-2 py-1 text-gray-600 hover:bg-gray-100 font-bold text-xs cursor-pointer">-</button>
+                        <span className="px-3 py-1 text-xs font-bold text-gray-900">{item.quantity}</span>
+                        <button onClick={() => updateQuantity(item.cartId, 1)} className="px-2 py-1 text-gray-600 hover:bg-gray-100 font-bold text-xs cursor-pointer">+</button>
+                      </div>
+                      <button onClick={() => removeItem(item.cartId)} className="text-red-500 hover:text-red-700 p-1.5 cursor-pointer" title="Remove">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
 
-              {/* Shipping Address Form */}
-              <div className="bg-white rounded-3xl shadow-sm border border-amber-100 p-6 md:p-8 space-y-6">
-                <h3 className="text-lg font-extrabold text-amber-950 pb-3 border-b border-gray-100 flex items-center gap-2">
-                  <MapPin className="w-5 h-5 text-amber-800" />
-                  <span>Shipping Address</span>
-                </h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1.5">Full Name *</label>
-                    <input 
-                      type="text" 
-                      required 
-                      maxLength={30}
-                      value={name}
-                      onChange={handleNameChange}
-                      placeholder="Enter letters only (e.g. Rahul)" 
-                      className="w-full text-xs p-3 rounded-xl border border-gray-300 focus:border-amber-900 focus:outline-none bg-gray-50/50"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1.5">Phone Number (WhatsApp) *</label>
-                    <div className="flex items-center border border-gray-300 rounded-xl overflow-hidden focus-within:border-amber-900 bg-gray-50/50">
-                      <span className="bg-gray-100 px-3 py-3 text-xs font-bold text-gray-600 border-r border-gray-300">+91</span>
-                      <input 
-                        type="tel" 
-                        maxLength={10} 
-                        required 
-                        value={phone}
-                        onChange={handlePhoneChange}
-                        placeholder="9876543210" 
-                        className="w-full text-xs p-3 focus:outline-none bg-transparent"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1.5">Pincode *</label>
-                    <input 
-                      type="text" 
-                      maxLength={6} 
-                      required 
-                      value={pincode}
-                      onChange={handlePincodeChange}
-                      placeholder="500004" 
-                      className="w-full text-xs p-3 rounded-xl border border-gray-300 focus:border-amber-900 focus:outline-none bg-gray-50/50"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1.5">Town/City *</label>
-                    <input 
-                      type="text" 
-                      maxLength={20} 
-                      required 
-                      value={city}
-                      onChange={handleCityChange}
-                      placeholder="Hyderabad" 
-                      className="w-full text-xs p-3 rounded-xl border border-gray-300 focus:border-amber-900 focus:outline-none bg-gray-50/50"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1.5">Flat, House no., Building, Company, Apartment *</label>
-                  <input 
-                    type="text" 
-                    required 
-                    maxLength={40}
-                    value={apartment}
-                    onChange={handleApartmentChange}
-                    placeholder="Road No 10, Banjara Hills" 
-                    className="w-full text-xs p-3 rounded-xl border border-gray-300 focus:border-amber-900 focus:outline-none bg-gray-50/50"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1.5">State *</label>
-                  <select 
-                    value={state}
-                    onChange={(e) => setState(e.target.value)}
-                    className="w-full text-xs p-3 rounded-xl border border-gray-300 focus:border-amber-900 focus:outline-none bg-gray-50/50 font-medium"
-                  >
-                    <option value="Telangana">Telangana</option>
-                    <option value="Andhra Pradesh">Andhra Pradesh</option>
-                    <option value="Karnataka">Karnataka</option>
-                    <option value="Maharashtra">Maharashtra</option>
-                    <option value="Tamil Nadu">Tamil Nadu</option>
-                  </select>
-                </div>
+              <div className="pt-4 border-t border-gray-100 flex justify-between items-center text-sm font-bold">
+                <span>Total Amount:</span>
+                <span className="text-lg font-extrabold text-amber-950">₹{calculateTotal().toLocaleString()}</span>
               </div>
             </div>
 
-            {/* Right Col: Bill Details & Proceed Button */}
-            <div className="bg-white rounded-3xl shadow-sm border border-amber-100 p-6 md:p-8 flex flex-col justify-between h-fit sticky top-24">
-              <div className="space-y-5">
-                <h3 className="text-base font-extrabold text-amber-950 pb-3 border-b border-gray-100">Bill Details</h3>
+            <div className="bg-white rounded-3xl shadow-sm border border-amber-100 p-6 space-y-4">
+              <h3 className="text-base font-extrabold text-amber-950 pb-3 border-b border-gray-100">Shipping & Secure UPI Payment</h3>
+              
+              <form onSubmit={handlePayment} className="space-y-4">
                 
-                <div className="space-y-3 text-xs">
-                  <div className="flex justify-between text-gray-600">
-                    <span>Item Total ({cart.reduce((acc: number, item: any) => acc + (Number(item.quantity) || 1), 0)} items)</span>
-                    <span className="font-bold text-gray-900">₹{calculateTotal().toLocaleString()}</span>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Full Name</label>
+                  <input 
+                    type="text" 
+                    value={name}
+                    onChange={(e) => { setName(e.target.value); setNameError(''); }}
+                    placeholder="Sanjeev Dasari"
+                    className={`w-full text-xs p-3 rounded-xl border focus:outline-none transition ${nameError ? 'border-red-500 bg-red-50/20' : 'border-gray-300 focus:border-amber-900'}`}
+                  />
+                  {nameError && <p className="text-[11px] text-red-600 font-semibold mt-1">{nameError}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Mobile Number</label>
+                  <div className={`flex items-center border rounded-xl overflow-hidden focus-within:border-amber-900 ${phoneError ? 'border-red-500 bg-red-50/20' : 'border-gray-300'}`}>
+                    <span className="bg-gray-50 px-3 py-3 text-xs font-bold text-gray-600 border-r border-gray-300">+91</span>
+                    <input 
+                      type="tel" 
+                      maxLength={10}
+                      value={phone}
+                      onChange={(e) => { setPhone(e.target.value.replace(/\D/g, '')); setPhoneError(''); }}
+                      placeholder="9876543210"
+                      className="w-full text-xs p-3 focus:outline-none bg-transparent"
+                    />
                   </div>
-                  <div className="flex justify-between text-gray-600 pb-3 border-b border-gray-100">
-                    <span>Delivery Fee</span>
-                    <span className="text-emerald-600 font-bold">FREE</span>
+                  {phoneError && <p className="text-[11px] text-red-600 font-semibold mt-1">{phoneError}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">House / Flat / Apartment No.</label>
+                  <input 
+                    type="text" 
+                    value={houseNo}
+                    onChange={(e) => { setHouseNo(e.target.value); setHouseError(''); }}
+                    placeholder="Flat 402, Royal Residency"
+                    className={`w-full text-xs p-3 rounded-xl border focus:outline-none transition ${houseError ? 'border-red-500 bg-red-50/20' : 'border-gray-300 focus:border-amber-900'}`}
+                  />
+                  {houseError && <p className="text-[11px] text-red-600 font-semibold mt-1">{houseError}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Street / Locality / Landmark</label>
+                  <input 
+                    type="text" 
+                    value={street}
+                    onChange={(e) => { setStreet(e.target.value); setStreetError(''); }}
+                    placeholder="Road No 10, Near Jubilee Hills Checkpost"
+                    className={`w-full text-xs p-3 rounded-xl border focus:outline-none transition ${streetError ? 'border-red-500 bg-red-50/20' : 'border-gray-300 focus:border-amber-900'}`}
+                  />
+                  {streetError && <p className="text-[11px] text-red-600 font-semibold mt-1">{streetError}</p>}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">City</label>
+                    <input 
+                      type="text" 
+                      value={city}
+                      onChange={(e) => { setCity(e.target.value); setCityError(''); }}
+                      placeholder="Hyderabad"
+                      className={`w-full text-xs p-3 rounded-xl border focus:outline-none transition ${cityError ? 'border-red-500 bg-red-50/20' : 'border-gray-300 focus:border-amber-900'}`}
+                    />
+                    {cityError && <p className="text-[11px] text-red-600 font-semibold mt-1">{cityError}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">State</label>
+                    <input 
+                      type="text" 
+                      value={state}
+                      onChange={(e) => { setState(e.target.value); setStateError(''); }}
+                      placeholder="Telangana"
+                      className={`w-full text-xs p-3 rounded-xl border focus:outline-none transition ${stateError ? 'border-red-500 bg-red-50/20' : 'border-gray-300 focus:border-amber-900'}`}
+                    />
+                    {stateError && <p className="text-[11px] text-red-600 font-semibold mt-1">{stateError}</p>}
                   </div>
                 </div>
 
-                <div className="flex justify-between items-center pt-2 pb-4">
-                  <span className="text-sm font-bold text-gray-900">Order Total:</span>
-                  <span className="text-xl font-extrabold text-amber-950">₹{calculateTotal().toLocaleString()}</span>
-                </div>
-              </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">Country</label>
+                    <input 
+                      type="text" 
+                      value={country}
+                      onChange={(e) => { setCountry(e.target.value); setCountryError(''); }}
+                      placeholder="India"
+                      className={`w-full text-xs p-3 rounded-xl border focus:outline-none transition ${countryError ? 'border-red-500 bg-red-50/20' : 'border-gray-300 focus:border-amber-900'}`}
+                    />
+                    {countryError && <p className="text-[11px] text-red-600 font-semibold mt-1">{countryError}</p>}
+                  </div>
 
-              <div className="space-y-3 pt-4 border-t border-gray-100">
-                <button
-                  type="button"
-                  onClick={handleProceedClick}
-                  className="w-full bg-[#8B2500] hover:bg-[#6b1c00] text-white font-extrabold py-3.5 px-4 rounded-xl text-xs transition shadow-lg flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <span>Proceed to UPI Payment</span>
-                  <Smartphone className="w-4 h-4" />
-                </button>
-                
-                <div className="flex items-center justify-center gap-1.5 text-[10px] text-gray-500 pt-1">
-                  <ShieldCheck className="w-3.5 h-3.5 text-amber-700" />
-                  <span>100% Secure Checkout</span>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">Pincode</label>
+                    <input 
+                      type="text" 
+                      maxLength={6}
+                      value={pincode}
+                      onChange={(e) => { setPincode(e.target.value.replace(/\D/g, '')); setPincodeError(''); }}
+                      placeholder="500034"
+                      className={`w-full text-xs p-3 rounded-xl border focus:outline-none transition ${pincodeError ? 'border-red-500 bg-red-50/20' : 'border-gray-300 focus:border-amber-900'}`}
+                    />
+                    {pincodeError && <p className="text-[11px] text-red-600 font-semibold mt-1">{pincodeError}</p>}
+                  </div>
                 </div>
-              </div>
+
+                <div className="pt-2">
+                  <button 
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full bg-[#8B2500] hover:bg-[#6b1c00] text-white font-extrabold py-3.5 rounded-xl text-xs shadow-md transition cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>{isSubmitting ? 'Processing Order...' : `Pay ₹${calculateTotal().toLocaleString()} Securely via UPI`}</span>
+                  </button>
+                </div>
+
+              </form>
             </div>
 
           </div>
         )}
       </main>
-
-      {/* SECURE PAYMENT MODAL */}
-      {showPaymentModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden p-6 space-y-5 border border-amber-100">
-            <div className="flex justify-between items-center border-b border-gray-100 pb-3">
-              <div>
-                <h3 className="text-base font-bold text-amber-950">Select UPI App</h3>
-                <p className="text-[10px] text-gray-500">Payable: ₹{calculateTotal().toLocaleString()}</p>
-              </div>
-              <button onClick={() => setShowPaymentModal(false)} className="text-gray-400 hover:text-gray-700 p-1 cursor-pointer font-bold">
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              <button
-                type="button"
-                onClick={() => handleUpiAppPayment('phonepe')}
-                className="w-full bg-[#5f259f] hover:bg-[#4d1d82] text-white font-extrabold py-3.5 px-4 rounded-xl text-xs transition shadow flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <Smartphone className="w-4 h-4" />
-                <span>Pay with PhonePe</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleUpiAppPayment('gpay')}
-                className="w-full bg-white hover:bg-gray-50 text-gray-800 border border-gray-300 font-extrabold py-3.5 px-4 rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <Smartphone className="w-4 h-4 text-blue-600" />
-                <span>Pay with Google Pay</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleUpiAppPayment('paytm')}
-                className="w-full bg-[#00b9f1] hover:bg-[#009be1] text-white font-extrabold py-3.5 px-4 rounded-xl text-xs transition shadow flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <Smartphone className="w-4 h-4" />
-                <span>Pay with Paytm</span>
-              </button>
-            </div>
-
-            {/* OR SCAN QR CODE FALLBACK */}
-            <div className="pt-3 border-t border-gray-100 text-center space-y-2">
-              <p className="text-[11px] font-bold text-gray-600">Or Scan QR Code via any UPI App:</p>
-              <div className="w-32 h-32 bg-white p-2 rounded-xl border border-amber-300 shadow-sm mx-auto flex items-center justify-center overflow-hidden">
-                <img src="/upi-qr.jpeg" alt="UPI QR" className="w-full h-full object-contain" />
-              </div>
-              <p className="text-[10px] text-gray-400">UPI ID: 7981658289@ybl</p>
-            </div>
-          </div>
-        </div>
-      )}
 
     </div>
   );
