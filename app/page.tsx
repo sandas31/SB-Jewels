@@ -1,34 +1,31 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ShoppingBag, Share2, ShieldCheck, Sparkles, X, Trash2, ArrowRight, ArrowLeft, User, Shield, LogOut, Search, MapPin, Heart, Package, Gem, Crown, Feather, CheckCircle2, MessageCircle } from 'lucide-react';
 
 export default function Home() {
   const router = useRouter();
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [pincode, setPincode] = useState('');
   const [pincodeChecked, setPincodeChecked] = useState(false);
   
-  const [cart, setCart] = useState([]);
-  const [wishlist, setWishlist] = useState([]);
+  const [cart, setCart] = useState<any[]>([]);
+  const [wishlist, setWishlist] = useState<any[]>([]);
 
-  // Single-Page View States ('catalog' | 'detail' | 'orders' | 'wishlist')
   const [currentView, setCurrentView] = useState('catalog'); 
-  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [selectedSize, setSelectedSize] = useState('18 inches');
   const [productQuantity, setProductQuantity] = useState(1);
 
-  // Phone + OTP Login States with Strict Validation
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authStep, setAuthStep] = useState('phone'); // 'phone' or 'otp'
+  const [authStep, setAuthStep] = useState('phone'); 
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otp, setOtp] = useState('');
 
-  // Banner Carousel State
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
   const banners = [
     {
@@ -58,20 +55,20 @@ export default function Home() {
     return () => clearInterval(timer);
   }, [banners.length]);
 
-  const topRef = useRef(null);
-  const featuredRef = useRef(null);
-  const categoriesRef = useRef(null);
-  const collectionsRef = useRef(null);
-  const allProductsRef = useRef(null);
+  const topRef = useRef<HTMLDivElement>(null);
+  const featuredRef = useRef<HTMLDivElement>(null);
+  const categoriesRef = useRef<HTMLDivElement>(null);
+  const collectionsRef = useRef<HTMLDivElement>(null);
+  const allProductsRef = useRef<HTMLDivElement>(null);
 
-  const [user, setUser] = useState(null); 
+  const [user, setUser] = useState<any>(null); 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const fallbackProducts = [
-    { id: '1', name: 'Royal Gold Haram Set', price: 1499, category: 'Haram', image1: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?q=80&w=600&auto=format&fit=crop', description: 'Exquisite 1g gold-coated traditional haram set with matching earrings.' },
-    { id: '2', name: 'Bridal Kundan Choker', price: 999, category: 'Chokers', image1: 'https://images.unsplash.com/photo-1617038260897-41a1f14a8ca0?q=80&w=600&auto=format&fit=crop', description: 'Stunning stone-studded close-fitting bridal choker necklace.' },
-    { id: '3', name: 'Designer Gold Bangles (Set)', price: 799, category: 'Bangles', image1: 'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?q=80&w=600&auto=format&fit=crop', description: 'Sparkling 1g gold bangles crafted for special celebrations.' },
-    { id: '4', name: 'Antique Lakshmi Vaddanam', price: 1299, category: 'Vaddanam', image1: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=600&auto=format&fit=crop', description: 'Traditional Goddess Lakshmi waist belt with intricate craftsmanship.' }
+    { id: '1', name: 'Royal Gold Haram Set', price: 1499, category: 'Haram', stock: 15, image1: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?q=80&w=600&auto=format&fit=crop', description: 'Exquisite 1g gold-coated traditional haram set with matching earrings.' },
+    { id: '2', name: 'Bridal Kundan Choker', price: 999, category: 'Chokers', stock: 10, image1: 'https://images.unsplash.com/photo-1617038260897-41a1f14a8ca0?q=80&w=600&auto=format&fit=crop', description: 'Stunning stone-studded close-fitting bridal choker necklace.' },
+    { id: '3', name: 'Designer Gold Bangles (Set)', price: 799, category: 'Bangles', stock: 20, image1: 'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?q=80&w=600&auto=format&fit=crop', description: 'Sparkling 1g gold bangles crafted for special celebrations.' },
+    { id: '4', name: 'Antique Lakshmi Vaddanam', price: 1299, category: 'Vaddanam', stock: 8, image1: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=600&auto=format&fit=crop', description: 'Traditional Goddess Lakshmi waist belt with intricate craftsmanship.' }
   ];
 
   useEffect(() => {
@@ -100,17 +97,19 @@ export default function Home() {
 
     fetchProducts();
 
-    const savedCart = JSON.parse(localStorage.getItem('sb_cart')) || [];
-    setCart(savedCart);
-
-    const savedWishlist = JSON.parse(localStorage.getItem('sb_wishlist')) || [];
-    setWishlist(savedWishlist);
-
-    const savedUser = JSON.parse(localStorage.getItem('sb_user')) || null;
-    setUser(savedUser);
+    try {
+      const savedCart = JSON.parse(localStorage.getItem('sb_cart') || '[]');
+      const savedWishlist = JSON.parse(localStorage.getItem('sb_wishlist') || '[]');
+      const savedUser = JSON.parse(localStorage.getItem('sb_user') || 'null');
+      setCart(Array.isArray(savedCart) ? savedCart : []);
+      setWishlist(Array.isArray(savedWishlist) ? savedWishlist : []);
+      setUser(savedUser);
+    } catch (e) {
+      console.error("LocalStorage parsing error:", e);
+    }
   }, []);
 
-  const scrollToSection = (refElement) => {
+  const scrollToSection = (refElement: any) => {
     if (currentView !== 'catalog') {
       setCurrentView('catalog');
       setTimeout(() => {
@@ -121,32 +120,30 @@ export default function Home() {
     }
   };
 
-  // Positive/Negative validation case for Phone Input
-  const handlePhoneChange = (e) => {
-    const val = e.target.value.replace(/\D/g, '').slice(0, 10); // Negative case: block non-digits and length > 10
+  const handlePhoneChange = (e: any) => {
+    const val = e.target.value.replace(/\D/g, '').slice(0, 10);
     setPhoneNumber(val);
   };
 
-  const handleSendOtp = (e) => {
+  const handleSendOtp = (e: any) => {
     e.preventDefault();
-    if (phoneNumber.length !== 10) {
-      alert('Negative Case: Please enter a valid 10-digit mobile number.');
+    if (!/^\d{10}$/.test(phoneNumber)) {
+      alert('Validation Error: Phone number must be exactly 10 digits.');
       return;
     }
-    alert(`Positive Case: OTP sent successfully to +91 ${phoneNumber}. (Enter any 4 digits to verify)`);
+    alert(`OTP sent successfully to +91 ${phoneNumber}. (Use any 4 digits to test)`);
     setAuthStep('otp');
   };
 
-  // Positive/Negative validation case for OTP Input
-  const handleOtpChange = (e) => {
-    const val = e.target.value.replace(/\D/g, '').slice(0, 4); // Negative case: block non-digits and length > 4
+  const handleOtpChange = (e: any) => {
+    const val = e.target.value.replace(/\D/g, '').slice(0, 4);
     setOtp(val);
   };
 
-  const handleVerifyOtp = (e) => {
+  const handleVerifyOtp = (e: any) => {
     e.preventDefault();
-    if (otp.length !== 4) {
-      alert('Negative Case: Please enter a valid 4-digit OTP.');
+    if (!/^\d{4}$/.test(otp)) {
+      alert('Validation Error: OTP must be exactly 4 digits.');
       return;
     }
 
@@ -164,7 +161,7 @@ export default function Home() {
     setAuthStep('phone');
     setPhoneNumber('');
     setOtp('');
-    alert(`Positive Case: Welcome back, ${loggedInUser.name}!`);
+    alert(`Welcome back, ${loggedInUser.name}!`);
   };
 
   const handleLogout = () => {
@@ -174,41 +171,56 @@ export default function Home() {
     alert('Logged out successfully.');
   };
 
-  // Positive/Negative validation case for Pincode
-  const handlePincodeChange = (e) => {
-    const val = e.target.value.replace(/\D/g, '').slice(0, 6); // Negative case: strictly numbers, max 6 digits
+  const handlePincodeChange = (e: any) => {
+    const val = e.target.value.replace(/\D/g, '').slice(0, 6);
     setPincode(val);
     setPincodeChecked(val.length === 6);
   };
 
-  const toggleWishlist = (product, e) => {
+  const toggleWishlist = (product: any, e: any) => {
     if (e) e.stopPropagation();
+    if (!product || typeof product !== 'object') return;
+    
     const pId = product.id || product.Id;
-    const exists = wishlist.some(item => String(item.id || item.Id) === String(pId));
+    if (!pId) return;
 
-    let updatedWishlist;
-    if (exists) {
-      updatedWishlist = wishlist.filter(item => String(item.id || item.Id) !== String(pId));
-    } else {
-      updatedWishlist = [...wishlist, product];
-    }
+    const exists = wishlist.some(item => String(item.id || item.Id) === String(pId));
+    let updatedWishlist = exists 
+      ? wishlist.filter(item => String(item.id || item.Id) !== String(pId))
+      : [...wishlist, product];
 
     setWishlist(updatedWishlist);
     localStorage.setItem('sb_wishlist', JSON.stringify(updatedWishlist));
   };
 
+  const handleQuantityChange = (delta: number) => {
+    const availableStock = Number(selectedProduct?.stock || selectedProduct?.Stock || 15);
+    setProductQuantity(prev => {
+      const nextVal = prev + delta;
+      if (nextVal < 1) return 1;
+      if (nextVal > availableStock) {
+        alert(`Cannot exceed available stock limit of ${availableStock}.`);
+        return availableStock;
+      }
+      return nextVal;
+    });
+  };
+
   const addToCartFromDetail = () => {
-    if (!selectedProduct) return;
+    if (!selectedProduct) {
+      alert('Error: No product selected.');
+      return;
+    }
+
     const pId = selectedProduct.id || selectedProduct.Id;
     const pName = selectedProduct.name || selectedProduct.Name;
-    const pPrice = selectedProduct.price || selectedProduct.Price;
+    const pPrice = Number(selectedProduct.price || selectedProduct.Price || 0);
     const pImage = selectedProduct.image1 || selectedProduct.image || selectedProduct.Image || '';
-    const availableStock = Number(selectedProduct.stock || selectedProduct.Stock || 10);
+    const availableStock = Number(selectedProduct.stock || selectedProduct.Stock || 15);
 
-    // Negative case check: Quantity bounds validation
     const qtyToAdd = Number(productQuantity);
-    if (isNaN(qtyToAdd) || qtyToAdd < 1) {
-      alert('Negative Case: Quantity must be at least 1.');
+    if (isNaN(qtyToAdd) || qtyToAdd < 1 || qtyToAdd > availableStock) {
+      alert(`Validation Error: Quantity must be between 1 and ${availableStock}.`);
       return;
     }
 
@@ -220,7 +232,7 @@ export default function Home() {
       const newTotalQty = currentQty + qtyToAdd;
 
       if (newTotalQty > availableStock) {
-        alert(`Negative Case: Cannot add more. Maximum available stock is ${availableStock}.`);
+        alert(`Stock Limit Reached: Maximum available quantity for this item is ${availableStock}.`);
         return;
       }
 
@@ -229,16 +241,11 @@ export default function Home() {
         quantity: newTotalQty
       };
     } else {
-      if (qtyToAdd > availableStock) {
-        alert(`Negative Case: Cannot add more. Maximum available stock is ${availableStock}.`);
-        return;
-      }
-
       const newItem = { 
         cartId: Date.now() + Math.random(),
         id: pId, 
         name: pName, 
-        price: Number(pPrice), 
+        price: pPrice, 
         image: pImage,
         quantity: qtyToAdd, 
         selectedSize: selectedSize 
@@ -248,44 +255,50 @@ export default function Home() {
 
     setCart(updatedCart);
     localStorage.setItem('sb_cart', JSON.stringify(updatedCart));
-    alert('Positive Case: Product added to cart successfully!');
+    alert('Product added to cart successfully!');
   };
 
-  const removeFromCart = (cartId) => {
-    const updatedCart = cart.filter(item => item.cartId !== cartId);
-    setCart(updatedCart);
-    localStorage.setItem('sb_cart', JSON.stringify(updatedCart));
+  const removeFromCart = (cartId: any) => {
+    const updated = cart.filter(item => item.cartId !== cartId);
+    setCart(updated);
+    localStorage.setItem('sb_cart', JSON.stringify(updated));
   };
 
   const calculateTotal = () => {
-    return cart.reduce((total, item) => total + (Number(item.price) * (Number(item.quantity) || 1)), 0);
+    return cart.reduce((total: number, item: any) => total + (Number(item.price) * (Number(item.quantity) || 1)), 0);
   };
 
   const categories = ['All', 'Haram', 'Chokers', 'Bangles', 'Vaddanam', 'Rings', 'Earrings'];
   
-  // Positive/Negative search filter case (sanitizing text inputs against injection/overflow)
-  const filteredProducts = products.filter(p => {
-    const cat = p.category || p.Category || '';
-    const pName = p.name || p.Name || '';
-    
-    const matchesCategory = selectedCategory === 'All' || cat.toLowerCase() === selectedCategory.toLowerCase();
-    const matchesSearch = pName.toLowerCase().includes(searchQuery.toLowerCase().trim());
-    
-    return matchesCategory && matchesSearch;
-  });
+  const filteredProducts = useMemo(() => {
+    return products.filter(p => {
+      const cat = String(p.category || p.Category || '');
+      const pName = String(p.name || p.Name || '');
+      
+      const matchesCategory = selectedCategory === 'All' || cat.toLowerCase() === selectedCategory.toLowerCase();
+      const cleanQuery = searchQuery.toLowerCase().trim();
+      const matchesSearch = cleanQuery === '' || pName.toLowerCase().includes(cleanQuery);
+      
+      return matchesCategory && matchesSearch;
+    });
+  }, [products, selectedCategory, searchQuery]);
 
   const featuredProducts = products.slice(0, 4);
 
-  const relatedProducts = products.filter(p => {
-    if (!selectedProduct) return false;
-    const pCat = p.category || p.Category || '';
-    const selCat = selectedProduct.category || selectedProduct.Category || '';
-    const pId = p.id || p.Id;
-    const selId = selectedProduct.id || selectedProduct.Id;
-    return pCat.toLowerCase() === selCat.toLowerCase() && String(pId) !== String(selId);
-  }).slice(0, 4);
+  const relatedProducts = useMemo(() => {
+    if (!selectedProduct) return [];
+    const selCat = String(selectedProduct.category || selectedProduct.Category || '');
+    const selId = String(selectedProduct.id || selectedProduct.Id || '');
 
-  const handleWhatsAppShare = (product) => {
+    return products.filter(p => {
+      const pCat = String(p.category || p.Category || '');
+      const pId = String(p.id || p.Id || '');
+      return pCat.toLowerCase() === selCat.toLowerCase() && pId !== selId;
+    }).slice(0, 4);
+  }, [products, selectedProduct]);
+
+  const handleWhatsAppShare = (product: any) => {
+    if (!product) return;
     const domain = window.location.origin;
     const pId = product.id || product.Id || '';
     const pName = product.name || product.Name || 'Jewelry Piece';
@@ -294,7 +307,6 @@ export default function Home() {
     const pImage = product.image1 || product.image || product.Image || '';
     
     const productUrl = `${domain}?product=${pId}`;
-
     const shareText = 
       `${pImage}\n\n` +
       `SB Jewels Exclusive\n\n` +
@@ -357,10 +369,10 @@ export default function Home() {
           <div className="w-full md:w-96 relative">
             <input 
               type="text"
-              maxLength={50} // Negative case: Prevent query string buffer overflow attacks
+              maxLength={50}
               value={searchQuery}
               onChange={(e) => {
-                const sanitized = e.target.value.replace(/[<>]/g, ''); // Negative case: Strip dangerous HTML/script characters
+                const sanitized = e.target.value.replace(/[<>]/g, '');
                 setSearchQuery(sanitized);
                 if (currentView !== 'catalog') setCurrentView('catalog');
               }}
@@ -397,7 +409,6 @@ export default function Home() {
               {pincodeChecked && <span className="text-[9px] bg-emerald-600 text-white px-1.5 py-0.5 rounded">Valid</span>}
             </div>
 
-            {/* Login / User Avatar Button in Circle */}
             <div 
               className="relative"
               onMouseEnter={() => setIsDropdownOpen(true)}
@@ -446,7 +457,6 @@ export default function Home() {
               )}
             </div>
 
-            {/* Wishlist Button in Circle */}
             <button 
               onClick={() => setCurrentView('wishlist')}
               className="relative bg-amber-50 hover:bg-amber-100 text-amber-900 w-10 h-10 rounded-full border border-amber-200 transition flex items-center justify-center cursor-pointer shadow-sm"
@@ -460,7 +470,6 @@ export default function Home() {
               )}
             </button>
 
-            {/* Cart Button in Circle */}
             <button 
               onClick={() => router.push('/cart')}
               className="relative bg-amber-50 hover:bg-amber-100 text-amber-900 w-10 h-10 rounded-full border border-amber-200 transition flex items-center justify-center cursor-pointer shadow-sm"
@@ -469,7 +478,7 @@ export default function Home() {
               <ShoppingBag className="w-4 h-4" />
               {cart.length > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
-                  {cart.reduce((acc, item) => acc + (Number(item.quantity) || 1), 0)}
+                  {cart.reduce((acc: number, item: any) => acc + (Number(item.quantity) || 1), 0)}
                 </span>
               )}
             </button>
@@ -526,7 +535,6 @@ export default function Home() {
         <div className="max-w-7xl mx-auto space-y-12">
           
           {currentView === 'wishlist' ? (
-            /* WISHLIST VIEW */
             <div className="bg-white rounded-3xl shadow-sm border border-amber-100 p-8">
               <h3 className="text-xl font-extrabold text-amber-950 mb-4 pb-2 border-b border-amber-100 flex justify-between items-center">
                 <span>My Saved Wishlist</span>
@@ -607,7 +615,6 @@ export default function Home() {
               )}
             </div>
           ) : currentView === 'orders' ? (
-            /* MY ORDERS VIEW */
             <div className="bg-white rounded-3xl shadow-sm border border-amber-100 p-8">
               <h3 className="text-xl font-extrabold text-amber-950 mb-4 pb-2 border-b border-amber-100">My Orders & Purchase History</h3>
               <p className="text-xs text-gray-500 mb-6">Track your active gold jewelry shipments and past orders here.</p>
@@ -625,7 +632,6 @@ export default function Home() {
               </div>
             </div>
           ) : currentView === 'detail' && selectedProduct ? (
-            /* PRODUCT DETAILS VIEW WITH RELATED PRODUCTS */
             <div className="space-y-16">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 
@@ -681,9 +687,9 @@ export default function Home() {
                       <div className="mb-6">
                         <label className="block text-xs font-bold text-gray-700 mb-1.5">Quantity:</label>
                         <div className="inline-flex items-center border border-gray-300 rounded-xl overflow-hidden bg-white">
-                          <button onClick={() => setProductQuantity(Math.max(1, productQuantity - 1))} className="px-3 py-1.5 text-gray-600 hover:bg-gray-100 font-bold text-xs cursor-pointer">-</button>
+                          <button onClick={() => handleQuantityChange(-1)} className="px-3 py-1.5 text-gray-600 hover:bg-gray-100 font-bold text-xs cursor-pointer">-</button>
                           <span className="px-4 py-1.5 text-xs font-bold text-gray-900">{productQuantity}</span>
-                          <button onClick={() => setProductQuantity(productQuantity + 1)} className="px-3 py-1.5 text-gray-600 hover:bg-gray-100 font-bold text-xs cursor-pointer">+</button>
+                          <button onClick={() => handleQuantityChange(1)} className="px-3 py-1.5 text-gray-600 hover:bg-gray-100 font-bold text-xs cursor-pointer">+</button>
                         </div>
                       </div>
                     </div>
@@ -709,13 +715,12 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Right Column: Order Summary Cart Box */}
                 <div className="bg-white rounded-3xl shadow-sm border border-amber-100 p-6 flex flex-col justify-between h-fit">
                   <div>
                     <h3 className="text-base font-bold text-amber-950 mb-4 pb-2 border-b border-gray-100 flex justify-between items-center">
                       <span>Order Summary</span>
                       <span className="text-xs bg-amber-100 text-amber-900 px-2 py-0.5 rounded-full font-semibold">
-                        {cart.reduce((acc, item) => acc + (Number(item.quantity) || 1), 0)} items
+                        {cart.reduce((acc: number, item: any) => acc + (Number(item.quantity) || 1), 0)} items
                       </span>
                     </h3>
                     
@@ -723,7 +728,7 @@ export default function Home() {
                       <p className="text-xs text-gray-400 py-6 text-center">Your cart is empty. Click "Add to Cart" above.</p>
                     ) : (
                       <div className="space-y-3 mb-6 max-h-64 overflow-y-auto pr-1">
-                        {cart.map((item) => (
+                        {cart.map((item: any) => (
                           <div key={item.cartId} className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-amber-50/40 border border-amber-100 text-xs">
                             <div className="min-w-0 flex-1">
                               <p className="font-bold text-gray-900 truncate">{item.name}</p>
@@ -769,14 +774,13 @@ export default function Home() {
 
               </div>
 
-              {/* RELATED PRODUCTS SECTION */}
               {relatedProducts.length > 0 && (
                 <div className="pt-8 border-t border-amber-200">
                   <div className="flex items-center justify-between mb-6 pb-2 border-b border-amber-200">
                     <h3 className="text-xl font-extrabold text-amber-950 tracking-wide">You May Also Like (Related Products)</h3>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-                    {relatedProducts.map((item, idx) => {
+                    {relatedProducts.map((item: any, idx: number) => {
                       const rId = item.id || item.Id || idx;
                       const rName = item.name || item.Name;
                       const rPrice = item.price || item.Price;
@@ -813,10 +817,8 @@ export default function Home() {
 
             </div>
           ) : (
-            /* CATALOG VIEW WITH REFERENCE BANNER & ABOUT US BANNER */
             <div className="space-y-16">
               
-              {/* REFERENCE-MATCHING HERITAGE BANNER CAROUSEL */}
               <section className="bg-gradient-to-r from-[#4A1525] via-[#5c1c2f] to-[#360f1b] text-white py-12 px-8 md:px-16 rounded-3xl shadow-xl border border-amber-900/50 relative overflow-hidden transition-all duration-700">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
                   
@@ -887,13 +889,12 @@ export default function Home() {
                 </div>
               </section>
 
-              {/* FEATURED PRODUCTS SECTION */}
               <div ref={featuredRef} className="pt-4">
                 <div className="flex items-center justify-between mb-6 pb-2 border-b border-amber-200">
                   <h3 className="text-xl font-extrabold text-amber-950 tracking-wide">Featured Products</h3>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-                  {featuredProducts.map((item, idx) => {
+                  {featuredProducts.map((item: any, idx: number) => {
                     const fId = item.id || item.Id || idx;
                     const fName = item.name || item.Name;
                     const fPrice = item.price || item.Price;
@@ -927,7 +928,6 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* CATEGORIES SECTION */}
               <div ref={categoriesRef} className="pt-4">
                 <div className="flex items-center justify-between mb-6 pb-2 border-b border-amber-200">
                   <h3 className="text-xl font-extrabold text-amber-950 tracking-wide">Categories</h3>
@@ -945,7 +945,6 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* COLLECTIONS SECTION */}
               <div ref={collectionsRef} className="pt-4">
                 <div className="flex items-center justify-between mb-6 pb-2 border-b border-amber-200">
                   <h3 className="text-xl font-extrabold text-amber-950 tracking-wide">Luxury Collections</h3>
@@ -969,7 +968,6 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* ALL PRODUCTS SECTION */}
               <div ref={allProductsRef} className="pt-4">
                 <div className="flex items-center justify-between mb-6 pb-2 border-b border-amber-200">
                   <h3 className="text-xl font-extrabold text-amber-950 tracking-wide flex items-center gap-2">
@@ -986,7 +984,7 @@ export default function Home() {
                   <div className="text-center py-16 text-gray-500 bg-white rounded-2xl border border-amber-100 shadow-sm">No products found matching your search.</div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                    {filteredProducts.map((product, index) => {
+                    {filteredProducts.map((product: any, index: number) => {
                       const pId = product.id || product.Id || index;
                       const pName = product.name || product.Name || 'Unnamed Product';
                       const pPrice = product.price || product.Price || 0;
@@ -1063,7 +1061,6 @@ export default function Home() {
                 )}
               </div>
 
-              {/* ABOUT US BANNER MATCHING REFERENCE */}
               <section className="bg-gradient-to-r from-[#2B0C15] via-[#4A1525] to-[#2B0C15] text-amber-100 py-12 px-8 md:px-16 rounded-3xl shadow-xl border border-amber-900/40 relative overflow-hidden mt-16">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
                   
@@ -1121,11 +1118,9 @@ export default function Home() {
         </div>
       </div>
 
-      {/* 5. PROFESSIONAL REFERENCE-MATCHING FOOTER */}
       <footer className="bg-[#2B0C15] text-amber-100 pt-16 pb-12 px-6 md:px-12 mt-20 border-t border-amber-950">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-5 gap-10 mb-16 text-xs">
           
-          {/* Column 1: Know Your Jewellery */}
           <div className="space-y-3">
             <h4 className="font-bold text-amber-300 uppercase tracking-wider mb-4 text-sm">Know Your Jewellery</h4>
             <p className="hover:text-white cursor-pointer transition">Diamond guide</p>
@@ -1136,7 +1131,6 @@ export default function Home() {
             <p className="hover:text-white cursor-pointer transition">Glossary</p>
           </div>
 
-          {/* Column 2: SB Jewels Advantage */}
           <div className="space-y-3">
             <h4 className="font-bold text-amber-300 uppercase tracking-wider mb-4 text-sm">SB Jewels Advantage</h4>
             <p className="hover:text-white cursor-pointer transition">15-day returns</p>
@@ -1147,7 +1141,6 @@ export default function Home() {
             <p className="hover:text-white cursor-pointer transition">Digital gold</p>
           </div>
 
-          {/* Column 3: Customer Service */}
           <div className="space-y-3">
             <h4 className="font-bold text-amber-300 uppercase tracking-wider mb-4 text-sm">Customer Service</h4>
             <p className="hover:text-white cursor-pointer transition">Return policy</p>
@@ -1155,7 +1148,6 @@ export default function Home() {
             <p onClick={openWhatsAppChat} className="hover:text-white cursor-pointer transition">Enquiries & Support</p>
           </div>
 
-          {/* Column 4: About Us */}
           <div className="space-y-3">
             <h4 className="font-bold text-amber-300 uppercase tracking-wider mb-4 text-sm">About Us</h4>
             <p className="hover:text-white cursor-pointer transition">Our story</p>
@@ -1164,7 +1156,6 @@ export default function Home() {
             <p className="hover:text-white cursor-pointer transition">Careers</p>
           </div>
 
-          {/* Column 5: Contact Us & Address */}
           <div className="space-y-3">
             <h4 className="font-bold text-amber-300 uppercase tracking-wider mb-4 text-sm">Contact Us</h4>
             <p className="font-semibold text-white">SB Jewels Luxury Store</p>
@@ -1216,7 +1207,6 @@ export default function Home() {
         </div>
       </footer>
 
-      {/* PHONE & OTP LOGIN MODAL */}
       {showAuthModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden p-6 space-y-4 border border-amber-100">
@@ -1286,7 +1276,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* FLOATING WHATSAPP ICON BUTTON AT BOTTOM RIGHT */}
       <button 
         onClick={openWhatsAppChat}
         className="fixed bottom-6 right-6 z-50 bg-emerald-500 hover:bg-emerald-600 text-white p-4 rounded-full shadow-2xl flex items-center justify-center transition-transform hover:scale-110 active:scale-95 cursor-pointer"
@@ -1299,7 +1288,7 @@ export default function Home() {
   );
 }
 
-function Instagram({ className }) {
+function Instagram({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/>

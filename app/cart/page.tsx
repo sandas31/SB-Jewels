@@ -1,13 +1,13 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ShoppingBag, Trash2, ArrowLeft, CheckCircle2, MapPin, ArrowRight, ShieldCheck, Smartphone } from 'lucide-react';
+import { ShoppingBag, Trash2, ArrowLeft, CheckCircle2, MapPin, ShieldCheck, Smartphone, QrCode } from 'lucide-react';
 
 export default function CartPage() {
   const router = useRouter();
-  const [cart, setCart] = useState([]);
+  const [cart, setCart] = useState<any[]>([]);
   
-  // Strict Form States matching reference layout
+  // Strict Form States
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [pincode, setPincode] = useState('');
@@ -17,14 +17,14 @@ export default function CartPage() {
   
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [orderId, setOrderId] = useState('');
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   useEffect(() => {
-    const savedCart = JSON.parse(localStorage.getItem('sb_cart')) || [];
+    const savedCart = JSON.parse(localStorage.getItem('sb_cart') || '[]');
     setCart(Array.isArray(savedCart) ? savedCart : []);
   }, []);
 
-  const handleQuantityChange = (cartId, delta) => {
+  const handleQuantityChange = (cartId: any, delta: number) => {
     const updated = cart.map(item => {
       if (item.cartId === cartId) {
         const newQty = (Number(item.quantity) || 1) + delta;
@@ -37,46 +37,47 @@ export default function CartPage() {
     localStorage.setItem('sb_cart', JSON.stringify(updated));
   };
 
-  const removeFromCart = (cartId) => {
+  const removeFromCart = (cartId: any) => {
     const updated = cart.filter(item => item.cartId !== cartId);
     setCart(updated);
     localStorage.setItem('sb_cart', JSON.stringify(updated));
   };
 
   const calculateTotal = () => {
-    return cart.reduce((total, item) => total + (Number(item.price) * (Number(item.quantity) || 1)), 0);
+    return cart.reduce((total: number, item: any) => total + (Number(item.price) * (Number(item.quantity) || 1)), 0);
   };
 
-  // --- STRICT FIELD VALIDATORS ---
-  const handleNameChange = (e) => {
+  const handleNameChange = (e: any) => {
     const val = e.target.value.replace(/[^a-zA-Z\s]/g, '').slice(0, 30);
     setName(val);
   };
 
-  const handlePhoneChange = (e) => {
+  const handlePhoneChange = (e: any) => {
     const val = e.target.value.replace(/\D/g, '').slice(0, 10);
     setPhone(val);
   };
 
-  const handlePincodeChange = (e) => {
+  const handlePincodeChange = (e: any) => {
     const val = e.target.value.replace(/\D/g, '').slice(0, 6);
     setPincode(val);
   };
 
-  const handleApartmentChange = (e) => {
+  const handleApartmentChange = (e: any) => {
     const val = e.target.value.replace(/[<>]/g, '').slice(0, 40);
     setApartment(val);
   };
 
-  const handleCityChange = (e) => {
+  const handleCityChange = (e: any) => {
     const val = e.target.value.replace(/[^a-zA-Z\s]/g, '').slice(0, 20);
     setCity(val);
   };
 
-  // Trigger Direct UPI App Intent (PhonePe, GPay, Paytm)
-  const handleUpiAppPayment = (appType) => {
+  // Step 1: Validate Form and Open Payment Gateway Modal
+  const handleProceedClick = (e: any) => {
+    e.preventDefault();
+
     if (name.trim().length < 2) {
-      alert('Security Validation: Please enter a valid name.');
+      alert('Security Validation: Please enter a valid name (letters only).');
       return;
     }
     if (!/^\d{10}$/.test(phone)) {
@@ -88,7 +89,7 @@ export default function CartPage() {
       return;
     }
     if (apartment.trim().length < 5) {
-      alert('Security Validation: Please enter a valid address.');
+      alert('Security Validation: Please enter a valid street/house address.');
       return;
     }
     if (city.trim().length < 3) {
@@ -100,18 +101,18 @@ export default function CartPage() {
       return;
     }
 
-    setIsProcessingPayment(true);
+    // All fields are valid! Open payment options modal.
+    setShowPaymentModal(true);
+  };
 
+  // Step 2: Trigger UPI App Intent or QR verification
+  const handleUpiAppPayment = (appType: string) => {
     const amount = calculateTotal();
-    const payeeVpa = '7981658289@ybl'; // Your verified UPI ID
+    const payeeVpa = '7981658289@ybl';
     const payeeName = 'SB%20Jewels';
     const transactionNote = 'SB%20Jewels%20Order%20Payment';
 
-    // Construct Universal UPI Intent String
-    const upiIntentUri = `upi://pay?pa=${payeeVpa}&pn=${payeeName}&am=${amount}&cu=INR&tn=${transactionNote}`;
-
-    // App-specific intent deep links or universal fallback
-    let finalUri = upiIntentUri;
+    let finalUri = `upi://pay?pa=${payeeVpa}&pn=${payeeName}&am=${amount}&cu=INR&tn=${transactionNote}`;
     if (appType === 'phonepe') {
       finalUri = `phonepe://pay?pa=${payeeVpa}&pn=${payeeName}&am=${amount}&cu=INR&tn=${transactionNote}`;
     } else if (appType === 'gpay') {
@@ -120,14 +121,13 @@ export default function CartPage() {
       finalUri = `paytmmp://pay?pa=${payeeVpa}&pn=${payeeName}&am=${amount}&cu=INR&tn=${transactionNote}`;
     }
 
-    // Attempt to open the payment app
     window.location.href = finalUri;
 
-    // Simulate callback verification after user returns from payment app
+    // Simulate completion and finalize order after app return
     setTimeout(() => {
-      setIsProcessingPayment(false);
+      setShowPaymentModal(false);
       finalizeSuccessfulOrder();
-    }, 4000);
+    }, 3000);
   };
 
   const finalizeSuccessfulOrder = () => {
@@ -144,7 +144,7 @@ export default function CartPage() {
       payment: { method: 'Direct UPI App', upiId: '7981658289@ybl' }
     };
     
-    const existingOrders = JSON.parse(localStorage.getItem('sb_orders')) || [];
+    const existingOrders = JSON.parse(localStorage.getItem('sb_orders') || '[]');
     localStorage.setItem('sb_orders', JSON.stringify([newOrder, ...existingOrders]));
     localStorage.removeItem('sb_cart');
 
@@ -163,8 +163,6 @@ export default function CartPage() {
 
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-gray-900 flex flex-col">
-      
-      {/* Top Navbar */}
       <header className="bg-white py-4 px-6 md:px-12 shadow-sm border-b border-amber-100 flex justify-between items-center sticky top-0 z-50">
         <div className="flex items-center gap-3 cursor-pointer" onClick={() => router.push('/')}>
           <div className="w-10 h-10 rounded-full bg-amber-900 text-white flex items-center justify-center font-bold text-sm">SB</div>
@@ -221,20 +219,17 @@ export default function CartPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            
-            {/* Left 2 Cols: Cart Items & Shipping Form */}
             <div className="lg:col-span-2 space-y-8">
-              
               <div className="bg-white rounded-3xl shadow-sm border border-amber-100 p-6 md:p-8">
                 <h3 className="text-lg font-extrabold text-amber-950 mb-6 pb-3 border-b border-gray-100 flex justify-between items-center">
                   <span>Your Shopping Bag Items</span>
                   <span className="text-xs bg-amber-100 text-amber-900 px-3 py-1 rounded-full font-semibold">
-                    {cart.reduce((acc, item) => acc + (Number(item.quantity) || 1), 0)} items
+                    {cart.reduce((acc: number, item: any) => acc + (Number(item.quantity) || 1), 0)} items
                   </span>
                 </h3>
 
                 <div className="space-y-4 max-h-[350px] overflow-y-auto pr-1">
-                  {cart.map((item) => (
+                  {cart.map((item: any) => (
                     <div key={item.cartId} className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-amber-50/40 border border-amber-100">
                       <div className="flex items-center gap-4">
                         {item.image ? (
@@ -361,14 +356,14 @@ export default function CartPage() {
               </div>
             </div>
 
-            {/* Right Col: Bill Details & Instant App Pay Buttons */}
+            {/* Right Col: Bill Details & Proceed Button */}
             <div className="bg-white rounded-3xl shadow-sm border border-amber-100 p-6 md:p-8 flex flex-col justify-between h-fit sticky top-24">
               <div className="space-y-5">
                 <h3 className="text-base font-extrabold text-amber-950 pb-3 border-b border-gray-100">Bill Details</h3>
                 
                 <div className="space-y-3 text-xs">
                   <div className="flex justify-between text-gray-600">
-                    <span>Item Total ({cart.reduce((acc, item) => acc + (Number(item.quantity) || 1), 0)} items)</span>
+                    <span>Item Total ({cart.reduce((acc: number, item: any) => acc + (Number(item.quantity) || 1), 0)} items)</span>
                     <span className="font-bold text-gray-900">₹{calculateTotal().toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-gray-600 pb-3 border-b border-gray-100">
@@ -383,49 +378,19 @@ export default function CartPage() {
                 </div>
               </div>
 
-              {/* INSTANT UPI APP PAYMENT BUTTONS */}
               <div className="space-y-3 pt-4 border-t border-gray-100">
-                <p className="text-[11px] font-bold text-gray-500 mb-2">Pay Instantly via UPI App:</p>
-                
                 <button
                   type="button"
-                  disabled={isProcessingPayment}
-                  onClick={() => handleUpiAppPayment('phonepe')}
-                  className="w-full bg-[#5f259f] hover:bg-[#4d1d82] text-white font-extrabold py-3 px-4 rounded-xl text-xs transition shadow flex items-center justify-center gap-2 cursor-pointer"
+                  onClick={handleProceedClick}
+                  className="w-full bg-[#8B2500] hover:bg-[#6b1c00] text-white font-extrabold py-3.5 px-4 rounded-xl text-xs transition shadow-lg flex items-center justify-center gap-2 cursor-pointer"
                 >
+                  <span>Proceed to UPI Payment</span>
                   <Smartphone className="w-4 h-4" />
-                  <span>Pay with PhonePe</span>
                 </button>
-
-                <button
-                  type="button"
-                  disabled={isProcessingPayment}
-                  onClick={() => handleUpiAppPayment('gpay')}
-                  className="w-full bg-white hover:bg-gray-50 text-gray-800 border border-gray-300 font-extrabold py-3 px-4 rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <Smartphone className="w-4 h-4 text-blue-600" />
-                  <span>Pay with Google Pay</span>
-                </button>
-
-                <button
-                  type="button"
-                  disabled={isProcessingPayment}
-                  onClick={() => handleUpiAppPayment('paytm')}
-                  className="w-full bg-[#00b9f1] hover:bg-[#009be1] text-white font-extrabold py-3 px-4 rounded-xl text-xs transition shadow flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <Smartphone className="w-4 h-4" />
-                  <span>Pay with Paytm</span>
-                </button>
-
-                {isProcessingPayment && (
-                  <p className="text-[11px] text-center font-bold text-amber-800 animate-pulse pt-2">
-                    Opening payment app & verifying transaction...
-                  </p>
-                )}
                 
-                <div className="flex items-center justify-center gap-1.5 text-[10px] text-gray-500 pt-2">
+                <div className="flex items-center justify-center gap-1.5 text-[10px] text-gray-500 pt-1">
                   <ShieldCheck className="w-3.5 h-3.5 text-amber-700" />
-                  <span>100% Secure UPI Intent Checkout</span>
+                  <span>100% Secure Checkout</span>
                 </div>
               </div>
             </div>
@@ -433,6 +398,61 @@ export default function CartPage() {
           </div>
         )}
       </main>
+
+      {/* SECURE PAYMENT MODAL */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden p-6 space-y-5 border border-amber-100">
+            <div className="flex justify-between items-center border-b border-gray-100 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-amber-950">Select UPI App</h3>
+                <p className="text-[10px] text-gray-500">Payable: ₹{calculateTotal().toLocaleString()}</p>
+              </div>
+              <button onClick={() => setShowPaymentModal(false)} className="text-gray-400 hover:text-gray-700 p-1 cursor-pointer font-bold">
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={() => handleUpiAppPayment('phonepe')}
+                className="w-full bg-[#5f259f] hover:bg-[#4d1d82] text-white font-extrabold py-3.5 px-4 rounded-xl text-xs transition shadow flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Smartphone className="w-4 h-4" />
+                <span>Pay with PhonePe</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleUpiAppPayment('gpay')}
+                className="w-full bg-white hover:bg-gray-50 text-gray-800 border border-gray-300 font-extrabold py-3.5 px-4 rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Smartphone className="w-4 h-4 text-blue-600" />
+                <span>Pay with Google Pay</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleUpiAppPayment('paytm')}
+                className="w-full bg-[#00b9f1] hover:bg-[#009be1] text-white font-extrabold py-3.5 px-4 rounded-xl text-xs transition shadow flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Smartphone className="w-4 h-4" />
+                <span>Pay with Paytm</span>
+              </button>
+            </div>
+
+            {/* OR SCAN QR CODE FALLBACK */}
+            <div className="pt-3 border-t border-gray-100 text-center space-y-2">
+              <p className="text-[11px] font-bold text-gray-600">Or Scan QR Code via any UPI App:</p>
+              <div className="w-32 h-32 bg-white p-2 rounded-xl border border-amber-300 shadow-sm mx-auto flex items-center justify-center overflow-hidden">
+                <img src="/upi-qr.jpeg" alt="UPI QR" className="w-full h-full object-contain" />
+              </div>
+              <p className="text-[10px] text-gray-400">UPI ID: 7981658289@ybl</p>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
