@@ -129,10 +129,10 @@ export default function Home() {
     if (currentView !== 'catalog') {
       setCurrentView('catalog');
       setTimeout(() => {
-        refElement.current?.scrollIntoView({ behavior: 'smooth' });
+        refElement.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 100);
     } else {
-      refElement.current?.scrollIntoView({ behavior: 'smooth' });
+      refElement.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
 
@@ -376,7 +376,7 @@ export default function Home() {
   const isCurrentProductRing = selectedProduct && String(selectedProduct.category || selectedProduct.Category || '').toLowerCase() === 'rings';
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#FDFBF7] text-gray-800 relative pt-[104px]" ref={topRef} suppressHydrationWarning>
+    <div className="min-h-screen flex flex-col bg-[#FDFBF7] text-gray-800 relative pt-[68px]" ref={topRef} suppressHydrationWarning>
       
       {/* CENTERED TOAST NOTIFICATION BANNER */}
       {toastMessage && (
@@ -388,9 +388,9 @@ export default function Home() {
         </div>
       )}
 
-      {/* FIXED TOP STICKY HEADER */}
-      <header className="bg-white text-gray-900 py-3.5 px-4 md:px-12 shadow-sm z-50 flex-shrink-0 border-b border-amber-100 fixed top-0 inset-x-0">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+      {/* FIXED TOP STICKY HEADER WITH TICKER INSIDE */}
+      <header className="bg-white text-gray-900 shadow-sm z-50 flex-shrink-0 border-b border-amber-100 fixed top-0 inset-x-0">
+        <div className="py-3.5 px-4 md:px-12 max-w-7xl mx-auto flex items-center justify-between gap-4">
           
           <div className="flex items-center gap-3">
             <button 
@@ -462,38 +462,38 @@ export default function Home() {
           </div>
 
         </div>
+
+        {/* SCROLLING ANNOUNCEMENT TICKER FLUSH INSIDE HEADER */}
+        <div className="bg-[#4A1525] text-amber-100 py-1.5 overflow-hidden whitespace-nowrap border-t border-[#320D18]">
+          <div className="flex w-max animate-marquee">
+            <div className="flex items-center text-[11px] font-medium tracking-wider flex-shrink-0">
+              <span>SB Jewels: Handcrafted Luxury Jewelry</span>
+              <span className="mx-32">•</span>
+              <span>Elegant Traditional Designs & Daily Wear Collections</span>
+            </div>
+            <div className="flex items-center text-[11px] font-medium tracking-wider flex-shrink-0 ml-32" aria-hidden="true">
+              <span>SB Jewels: Handcrafted Luxury Jewelry</span>
+              <span className="mx-32">•</span>
+              <span>Elegant Traditional Designs & Daily Wear Collections</span>
+            </div>
+          </div>
+          <style jsx>{`
+            @keyframes marquee {
+              0% { transform: translateX(0%); }
+              100% { transform: translateX(-50%); }
+            }
+            .animate-marquee {
+              display: flex;
+              width: max-content;
+              animation: marquee 35s linear infinite;
+            }
+          `}</style>
+        </div>
       </header>
 
-      {/* SCROLLING ANNOUNCEMENT TICKER */}
-      <div className="bg-[#4A1525] text-amber-100 py-2 overflow-hidden whitespace-nowrap shadow-sm z-40 border-b border-[#320D18] fixed top-[65px] inset-x-0">
-        <div className="flex w-max animate-marquee">
-          <div className="flex items-center text-[11px] font-medium tracking-wider flex-shrink-0">
-            <span>SB Jewels: Handcrafted Luxury Jewelry</span>
-            <span className="mx-32">•</span>
-            <span>Elegant Traditional Designs & Daily Wear Collections</span>
-          </div>
-          <div className="flex items-center text-[11px] font-medium tracking-wider flex-shrink-0 ml-32" aria-hidden="true">
-            <span>SB Jewels: Handcrafted Luxury Jewelry</span>
-            <span className="mx-32">•</span>
-            <span>Elegant Traditional Designs & Daily Wear Collections</span>
-          </div>
-        </div>
-        <style jsx>{`
-          @keyframes marquee {
-            0% { transform: translateX(0%); }
-            100% { transform: translateX(-50%); }
-          }
-          .animate-marquee {
-            display: flex;
-            width: max-content;
-            animation: marquee 35s linear infinite;
-          }
-        `}</style>
-      </div>
-
-      {/* ENHANCED HAMBURGER MENU WITH FIXED MY ORDERS ACTION */}
+      {/* HAMBURGER MENU WITH DISTINCT CATEGORIES LIST STYLING */}
       {mobileMenuOpen && (
-        <div className="fixed inset-0 top-[65px] z-45 bg-white flex flex-col justify-between p-6 animate-in slide-in-from-left duration-300 overflow-y-auto" suppressHydrationWarning>
+        <div className="fixed inset-0 top-[68px] z-45 bg-white flex flex-col justify-between p-6 animate-in slide-in-from-left duration-300 overflow-y-auto" suppressHydrationWarning>
           <div className="space-y-6">
             <div className="flex justify-between items-center pb-4 border-b border-amber-100">
               <h3 className="text-base font-extrabold text-amber-950">SB Jewels Menu</h3>
@@ -508,9 +508,9 @@ export default function Home() {
                 <ChevronRight className="w-4 h-4 text-gray-400" />
               </button>
 
-              <button onClick={() => scrollToSection(featuredRef)} className="w-full flex justify-between items-center py-2.5 border-b border-gray-100 text-left cursor-pointer text-amber-900">
+              <button onClick={() => scrollToSection(featuredRef)} className="w-full flex justify-between items-center py-2.5 border-b border-gray-100 text-left cursor-pointer">
                 <span>FEATURED MASTERPIECES</span>
-                <ChevronRight className="w-4 h-4 text-amber-700" />
+                <ChevronRight className="w-4 h-4 text-gray-400" />
               </button>
 
               <button 
@@ -525,7 +525,7 @@ export default function Home() {
                 <ChevronRight className="w-4 h-4 text-gray-400" />
               </button>
 
-              {/* CATEGORIES SECTION IN HAMBURGER MENU */}
+              {/* DISTINCT CATEGORIES LIST IN HAMBURGER MENU */}
               <div className="pt-2">
                 <p className="text-[11px] font-extrabold text-amber-900 uppercase tracking-wider mb-2">Categories</p>
                 <div className="grid grid-cols-2 gap-2">
@@ -539,10 +539,10 @@ export default function Home() {
                           setCurrentView('catalog');
                         }
                         setTimeout(() => {
-                          allProductsRef.current?.scrollIntoView({ behavior: 'smooth' });
+                          scrollToSection(allProductsRef);
                         }, 100);
                       }}
-                      className="text-left bg-amber-50/50 hover:bg-amber-100/60 p-2.5 rounded-xl text-xs font-semibold text-amber-950 border border-amber-200/50 transition cursor-pointer"
+                      className="text-left bg-amber-50/80 hover:bg-amber-100 p-2.5 rounded-xl text-xs font-bold text-amber-950 border border-amber-300 shadow-sm transition cursor-pointer"
                     >
                       {cat}
                     </button>
@@ -567,8 +567,8 @@ export default function Home() {
       )}
 
       {/* MAIN CONTENT AREA */}
-      <div className="flex-1 px-4 md:px-6 py-6 pb-24">
-        <div className="max-w-7xl mx-auto space-y-12">
+      <div className="flex-1 px-4 md:px-6 py-4 pb-24">
+        <div className="max-w-7xl mx-auto space-y-8">
           
           {currentView === 'wishlist' ? (
             <div className="bg-white rounded-3xl shadow-sm border border-amber-100 p-6 md:p-8">
@@ -607,65 +607,67 @@ export default function Home() {
               )}
             </div>
           ) : currentView === 'orders' ? (
-            <div className="bg-white rounded-3xl shadow-sm border border-amber-100 p-6 md:p-8 max-w-xl mx-auto space-y-6">
-              <h3 className="text-xl font-extrabold text-amber-950 pb-2 border-b border-amber-100">Track Your Order</h3>
-              <p className="text-xs text-gray-600">Enter your Order ID (e.g., SBJ-XXXXXX) below to check your live dispatch and confirmation status from our records.</p>
-              
-              <div className="flex gap-2">
-                <input 
-                  type="text"
-                  placeholder="Enter Order ID (e.g. SBJ-123456)"
-                  value={lookupOrderId}
-                  onChange={(e) => { setLookupOrderId(e.target.value.toUpperCase()); setLookupError(''); }}
-                  className="flex-1 text-xs p-3 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-900 font-bold uppercase tracking-wider"
-                />
-                <button 
-                  onClick={async () => {
-                    if (!lookupOrderId.trim()) {
-                      setLookupError('Please enter a valid Order ID.');
-                      return;
-                    }
-                    setIsSearching(true);
-                    setLookupError('');
-                    setSearchedOrder(null);
-                    try {
-                      const sheetUrl = process.env.NEXT_PUBLIC_ORDERS_SHEET_URL || 'https://script.google.com/macros/s/AKfycby69Zp3gn5KTLHDhfnEdl9ae5YLVKuU7MeD-UKo_H5qpl1mAq6fg6AEfxj3HpJbtAGVrw/exec';
-                      const res = await fetch(`${sheetUrl}?orderId=${lookupOrderId.trim()}`);
-                      const data = await res.json();
-                      if (data && data.OrderId) {
-                        setSearchedOrder(data);
-                      } else {
-                        setLookupError('Order not found. Please check your Order ID.');
+            <div className="max-w-xl mx-auto w-full px-4">
+              <div className="bg-white rounded-3xl shadow-sm border border-amber-100 p-6 md:p-8 space-y-6">
+                <h3 className="text-xl font-extrabold text-amber-950 pb-2 border-b border-amber-100">Track Your Order</h3>
+                <p className="text-xs text-gray-600">Enter your Order ID (e.g., SBJ-XXXXXX) below to check your live dispatch and confirmation status from our records.</p>
+                
+                <div className="flex gap-2">
+                  <input 
+                    type="text"
+                    placeholder="Enter Order ID (e.g. SBJ-123456)"
+                    value={lookupOrderId}
+                    onChange={(e) => { setLookupOrderId(e.target.value.toUpperCase()); setLookupError(''); }}
+                    className="flex-1 text-xs p-3 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-900 font-bold uppercase tracking-wider"
+                  />
+                  <button 
+                    onClick={async () => {
+                      if (!lookupOrderId.trim()) {
+                        setLookupError('Please enter a valid Order ID.');
+                        return;
                       }
-                    } catch (err) {
-                      setLookupError('Error fetching order. Please try again.');
-                    } finally {
-                      setIsSearching(false);
-                    }
-                  }}
-                  className="bg-amber-900 hover:bg-amber-950 text-white font-bold px-6 py-3 rounded-xl text-xs transition cursor-pointer shadow"
-                >
-                  {isSearching ? 'Searching...' : 'Search'}
-                </button>
-              </div>
-
-              {lookupError && <p className="text-xs text-red-600 font-semibold">{lookupError}</p>}
-
-              {searchedOrder && (
-                <div className="bg-amber-50/50 rounded-2xl p-5 border border-amber-200 space-y-3 text-xs animate-in fade-in duration-200">
-                  <div className="flex justify-between items-center pb-2 border-b border-amber-200">
-                    <span className="font-extrabold text-amber-950 text-sm">{searchedOrder.OrderId}</span>
-                    <span className="bg-emerald-100 text-emerald-800 px-3 py-0.5 rounded-full font-bold text-[10px]">{searchedOrder.Status || 'Confirmed'}</span>
-                  </div>
-                  <div className="space-y-1.5 text-gray-700">
-                    <p><strong>Customer:</strong> {searchedOrder.CustomerName} ({searchedOrder.Phone})</p>
-                    <p><strong>Date:</strong> {searchedOrder.Date}</p>
-                    <p><strong>Items:</strong> {searchedOrder.Items}</p>
-                    <p><strong>Delivery Address:</strong> {searchedOrder.HouseNo}, {searchedOrder.Street}, {searchedOrder.City}, {searchedOrder.State} - {searchedOrder.Pincode}</p>
-                    <p className="text-sm font-extrabold text-amber-950 pt-2 border-t border-amber-200">Total Paid: ₹{Number(searchedOrder.TotalAmount).toLocaleString()}</p>
-                  </div>
+                      setIsSearching(true);
+                      setLookupError('');
+                      setSearchedOrder(null);
+                      try {
+                        const sheetUrl = process.env.NEXT_PUBLIC_ORDERS_SHEET_URL || 'https://script.google.com/macros/s/AKfycby69Zp3gn5KTLHDhfnEdl9ae5YLVKuU7MeD-UKo_H5qpl1mAq6fg6AEfxj3HpJbtAGVrw/exec';
+                        const res = await fetch(`${sheetUrl}?orderId=${lookupOrderId.trim()}`);
+                        const data = await res.json();
+                        if (data && data.OrderId) {
+                          setSearchedOrder(data);
+                        } else {
+                          setLookupError('Order not found. Please check your Order ID.');
+                        }
+                      } catch (err) {
+                        setLookupError('Error fetching order. Please try again.');
+                      } finally {
+                        setIsSearching(false);
+                      }
+                    }}
+                    className="bg-amber-900 hover:bg-amber-950 text-white font-bold px-6 py-3 rounded-xl text-xs transition cursor-pointer shadow"
+                  >
+                    {isSearching ? 'Searching...' : 'Search'}
+                  </button>
                 </div>
-              )}
+
+                {lookupError && <p className="text-xs text-red-600 font-semibold">{lookupError}</p>}
+
+                {searchedOrder && (
+                  <div className="bg-amber-50/50 rounded-2xl p-5 border border-amber-200 space-y-3 text-xs animate-in fade-in duration-200">
+                    <div className="flex justify-between items-center pb-2 border-b border-amber-200">
+                      <span className="font-extrabold text-amber-950 text-sm">{searchedOrder.OrderId}</span>
+                      <span className="bg-emerald-100 text-emerald-800 px-3 py-0.5 rounded-full font-bold text-[10px]">{searchedOrder.Status || 'Confirmed'}</span>
+                    </div>
+                    <div className="space-y-1.5 text-gray-700">
+                      <p><strong>Customer:</strong> {searchedOrder.CustomerName} ({searchedOrder.Phone})</p>
+                      <p><strong>Date:</strong> {searchedOrder.Date}</p>
+                      <p><strong>Items:</strong> {searchedOrder.Items}</p>
+                      <p><strong>Delivery Address:</strong> {searchedOrder.HouseNo}, {searchedOrder.Street}, {searchedOrder.City}, {searchedOrder.State} - {searchedOrder.Pincode}</p>
+                      <p className="text-sm font-extrabold text-amber-950 pt-2 border-t border-amber-200">Total Paid: ₹{Number(searchedOrder.TotalAmount).toLocaleString()}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           ) : currentView === 'detail' && selectedProduct ? (
             <div className="space-y-6 pb-24" suppressHydrationWarning>
@@ -803,7 +805,7 @@ export default function Home() {
 
             </div>
           ) : (
-            <div className="space-y-12">
+            <div className="space-y-8">
               
               {/* RECTANGULAR EDGE-TO-EDGE HERO BANNER */}
               <section className="bg-gradient-to-r from-[#4A1525] via-[#5c1c2f] to-[#360f1b] text-white py-6 px-6 md:px-12 md:rounded-2xl shadow-xl border-y md:border border-amber-900/50 relative overflow-hidden -mx-4 md:mx-0">
@@ -819,7 +821,7 @@ export default function Home() {
 
                   <div>
                     <button 
-                      onClick={() => allProductsRef.current?.scrollIntoView({ behavior: 'smooth' })}
+                      onClick={() => scrollToSection(allProductsRef)}
                       className="bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-amber-950 font-extrabold py-2.5 px-6 rounded-xl text-xs uppercase tracking-wider shadow-md transition transform hover:scale-105 inline-flex items-center gap-2 cursor-pointer"
                     >
                       <ShoppingBag className="w-3.5 h-3.5" />
@@ -850,7 +852,7 @@ export default function Home() {
                   {categories.map((cat) => (
                     <button
                       key={cat}
-                      onClick={() => { setSelectedCategory(cat); allProductsRef.current?.scrollIntoView({ behavior: 'smooth' }); }}
+                      onClick={() => { setSelectedCategory(cat); scrollToSection(allProductsRef); }}
                       className={`flex-shrink-0 px-5 py-2 rounded-full text-xs font-bold border transition cursor-pointer shadow-sm whitespace-nowrap ${
                         selectedCategory === cat 
                           ? 'bg-amber-900 text-white border-amber-900' 
@@ -864,7 +866,7 @@ export default function Home() {
               </div>
 
               {/* FEATURED PRODUCTS (HORIZONTAL SWIPEABLE CAROUSEL) */}
-              <div ref={featuredRef} className="pt-2">
+              <div ref={featuredRef} className="pt-2 scroll-mt-[130px]">
                 <div className="flex items-center justify-between mb-4 pb-2 border-b border-amber-200">
                   <h3 className="text-lg md:text-xl font-extrabold text-amber-950 tracking-wide flex items-center gap-2">
                     <span>Featured Masterpieces</span>
@@ -926,7 +928,7 @@ export default function Home() {
               </div>
 
               {/* ALL PRODUCTS CATALOG GRID */}
-              <div ref={allProductsRef} className="pt-2">
+              <div ref={allProductsRef} className="pt-2 scroll-mt-[130px]">
                 <div className="flex items-center justify-between mb-6 pb-2 border-b border-amber-200">
                   <h3 className="text-lg md:text-xl font-extrabold text-amber-950 tracking-wide flex items-center gap-2">
                     <span>{selectedCategory === 'All' ? 'All Products' : `${selectedCategory} Collection`}</span>
